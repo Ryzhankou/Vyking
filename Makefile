@@ -39,23 +39,25 @@ k8s-argocd-password:
 	@kubectl config use-context kind-dev-global-cluster-0
 	@kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d && echo
 
-# Helm deployment (deploy database first, then app)
+# Helm deployment (manual, without Argo CD). Deploy database first, then app.
 helm-db-clean:
-	@helm uninstall archer-db -n game-backend --ignore-not-found 2>/dev/null || true
-	@kubectl delete statefulset,service,secret,configmap,pvc -n game-backend -l app.kubernetes.io/instance=archer-db --ignore-not-found 2>/dev/null || true
+	@helm uninstall infrastructure -n game-backend --ignore-not-found 2>/dev/null || true
+	@kubectl delete statefulset,service,secret,configmap,pvc,cronjob -n game-backend -l app.kubernetes.io/instance=infrastructure --ignore-not-found 2>/dev/null || true
 	@kubectl delete statefulset archer-db-mysql -n game-backend --ignore-not-found 2>/dev/null || true
 	@kubectl delete service archer-db-mysql archer-db-mysql-headless -n game-backend --ignore-not-found 2>/dev/null || true
-	@kubectl delete secret archer-db-mysql -n game-backend --ignore-not-found 2>/dev/null || true
-	@kubectl delete configmap archer-db-mysql archer-db-mysql-init -n game-backend --ignore-not-found 2>/dev/null || true
-	@kubectl delete pvc data-archer-db-mysql-0 -n game-backend --ignore-not-found 2>/dev/null || true
+	@kubectl delete secret archer-db -n game-backend --ignore-not-found 2>/dev/null || true
+	@kubectl delete configmap archer-db-mysql-init -n game-backend --ignore-not-found 2>/dev/null || true
+	@kubectl delete cronjob mysql-backup -n game-backend --ignore-not-found 2>/dev/null || true
+	@kubectl delete pvc data-archer-db-mysql-0 mysql-backup-pvc -n game-backend --ignore-not-found 2>/dev/null || true
 	@sleep 2
 
-# Reinstall DB (clean + install). Use when migrating from Bitnami or fixing immutable StatefulSet errors.
+# Reinstall DB (clean + install). Use when migrating or fixing immutable StatefulSet errors.
 helm-db-reinstall: helm-db-clean helm-db-install
 
-helm-db-install:
+helm-db-install: # Deploy MySQL (Bitnami) + backup CronJob via Helm (same chart as Argo CD infrastructure app)
 	@kubectl create namespace game-backend --dry-run=client -o yaml | kubectl apply -f -
-	@helm upgrade --install archer-db applications/database-chart -n game-backend --wait --timeout 5m
+	@helm dependency update infrastructure/mysql-chart
+	@helm upgrade --install infrastructure infrastructure/mysql-chart -n game-backend --wait --timeout 5m
 
 helm-app-install:
 	@kubectl create namespace game-frontend --dry-run=client -o yaml | kubectl apply -f -
@@ -78,20 +80,27 @@ helm-install: helm-db-install helm-app-install
 # ArgoCD Applications: infrastructure (MySQL + backup) + applications (frontend/backend)
 # Use: make k8s-app-install ARGOCD_ADMIN_PASSWORD=<password>
 # For Kind with local images: make kind-build-load first
+# Uses current git branch by default (override with TARGET_REVISION=main)
+TARGET_REVISION ?= $(shell git branch --show-current 2>/dev/null || echo main)
 k8s-app-install: # Deploy ArgoCD Applications (infrastructure + app) from Git
 	@kubectl create namespace game-frontend --dry-run=client -o yaml | kubectl apply -f -
 	@kubectl create namespace game-backend --dry-run=client -o yaml | kubectl apply -f -
 	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
+	TF_VAR_target_revision="$(TARGET_REVISION)" \
 	terraform -chdir=terraform/App init
 	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
+	TF_VAR_target_revision="$(TARGET_REVISION)" \
 	terraform -chdir=terraform/App plan
 	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
+	TF_VAR_target_revision="$(TARGET_REVISION)" \
 	terraform -chdir=terraform/App apply -auto-approve
 
-k8s-app-uninstall: # Remove ArgoCD Application for app
+k8s-app-uninstall: # Remove ArgoCD Applications
 	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
+	TF_VAR_target_revision="$(TARGET_REVISION)" \
 	terraform -chdir=terraform/App init
 	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
+	TF_VAR_target_revision="$(TARGET_REVISION)" \
 	terraform -chdir=terraform/App destroy -auto-approve
 
 k8s-argocd-uninstall: # Uninstall Argo CD from the cluster by deleting the argocd namespace

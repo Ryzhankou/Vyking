@@ -1,26 +1,24 @@
-# App module: Frontend and Backend
+# Infrastructure module: MySQL (Bitnami) + backup CronJob
 
-resource "argocd_project" "myapp" {
+resource "argocd_repository" "bitnami" {
+  repo = "https://charts.bitnami.com/bitnami"
+  type = "helm"
+}
+
+resource "argocd_project" "infrastructure" {
   metadata {
-    name      = "myapp"
+    name      = "infrastructure"
     namespace = "argocd"
   }
 
   spec {
-    description = "Project for myapp"
+    description = "Project for infrastructure (MySQL, backup CronJob)"
 
     source_repos = [
-      var.repo_url
+      var.repo_url,
+      argocd_repository.bitnami.repo
     ]
 
-    destination {
-      server    = "https://kubernetes.default.svc"
-      namespace = "myapp"
-    }
-    destination {
-      server    = "https://kubernetes.default.svc"
-      namespace = "game-frontend"
-    }
     destination {
       server    = "https://kubernetes.default.svc"
       namespace = "game-backend"
@@ -38,30 +36,29 @@ resource "argocd_project" "myapp" {
   }
 }
 
-resource "argocd_application" "myapp" {
+resource "argocd_application" "infrastructure" {
   metadata {
-    name      = "myapp"
+    name      = "infrastructure"
     namespace = "argocd"
   }
 
   wait = true
 
   spec {
-    project = argocd_project.myapp.metadata[0].name
+    project = argocd_project.infrastructure.metadata[0].name
 
     destination {
       server    = "https://kubernetes.default.svc"
-      namespace = "myapp"
+      namespace = "game-backend"
     }
 
     source {
       repo_url        = var.repo_url
-      path            = "applications/helm_chart"
+      path            = "infrastructure/mysql-chart"
       target_revision = var.target_revision
 
       helm {
-        release_name = "myapp"
-        value_files   = ["values-kind.yaml"]
+        release_name = "infrastructure"
       }
     }
 
@@ -76,6 +73,7 @@ resource "argocd_application" "myapp" {
   }
 
   depends_on = [
-    argocd_project.myapp
+    argocd_repository.bitnami,
+    argocd_project.infrastructure
   ]
 }
