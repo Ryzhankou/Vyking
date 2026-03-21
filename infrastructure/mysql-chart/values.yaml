@@ -5,7 +5,7 @@ archer-db:
   image:
     registry: docker.io
     repository: bitnamilegacy/mysql
-    tag: "8.0"
+    tag: "9.4.0"
 
   # Root-level: Bitnami mounts these
   initdbScriptsConfigMap: "archer-db-mysql-init"
