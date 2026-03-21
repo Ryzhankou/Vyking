@@ -16,8 +16,10 @@ spec:
       labels:
         {{- include "game.backend.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.backend.nodeSelector }}
       nodeSelector:
-        {{- toYaml .Values.backend.nodeSelector | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       initContainers:
         - name: wait-for-db
           image: busybox:1.36
@@ -26,7 +28,7 @@ spec:
             - sh
             - -c
             - |
-              until nc -z -w 2 {{ .Values.backend.env.DB_HOST }} {{ .Values.backend.env.DB_PORT }}; do
+              until nc -z -w 2 {{ .Values.backend.config.DB_HOST }} {{ .Values.backend.config.DB_PORT }}; do
                 echo "waiting for db"
                 sleep 3
               done
@@ -35,32 +37,29 @@ spec:
           image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
           imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
           ports:
-            - containerPort: {{ .Values.backend.service.port }}
+            - containerPort: {{ .Values.backend.containerPort }}
               protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "game.fullname" . }}-backend-config
           env:
-            {{- range $key, $val := .Values.backend.env }}
-            - name: {{ $key }}
-              value: {{ $val | quote }}
-            {{- end }}
             - name: DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: {{ .Values.backend.dbSecretName }}
-                  key: {{ .Values.backend.dbSecretKey }}
+                  name: {{ .Values.backend.existingSecret.name }}
+                  key: {{ .Values.backend.existingSecret.passwordKey }}
           startupProbe:
             httpGet:
               path: /api/health
               port: {{ .Values.backend.containerPort }}
             failureThreshold: 30
             periodSeconds: 5
-
           livenessProbe:
             httpGet:
               path: /api/health
               port: {{ .Values.backend.containerPort }}
             initialDelaySeconds: 10
             periodSeconds: 20
-
           readinessProbe:
             httpGet:
               path: /api/health
