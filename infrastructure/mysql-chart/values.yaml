@@ -7,6 +7,9 @@ archer-db:
     repository: bitnamilegacy/mysql
     tag: "8.0"
 
+  # Root-level: Bitnami mounts this to /docker-entrypoint-initdb.d (first run only)
+  initdbScriptsConfigMap: "archer-db-mysql-init"
+
   auth:
     rootPassword: "rootpassword"   # Change in production!
     database: "gamedb"
@@ -56,7 +59,6 @@ archer-db:
       skip-name-resolve
       character-set-server=utf8mb4
       collation-server=utf8mb4_unicode_ci
-    initdbScriptsConfigMap: "archer-db-mysql-init"
 
   secondary:
     replicaCount: 0
