@@ -5,7 +5,7 @@ archer-db:
   image:
     registry: docker.io
     repository: bitnamilegacy/mysql
-    tag: "9.4.0"
+    tag: "9.4.0-debian-12-r1"
 
   # Root-level: Bitnami mounts these
   initdbScriptsConfigMap: "archer-db-mysql-init"
@@ -21,27 +21,27 @@ archer-db:
 
   primary:
     # Bitnami startup script overrides bind-address; must use extraFlags for remote connections
-    extraFlags: "--bind-address=0.0.0.0"
+    # extraFlags: "--bind-address=0.0.0.0"
     # MySQL starts in background - needs 2+ min before port 3306 is ready
-    customStartupProbe:
-      tcpSocket:
-        port: 3306
-      initialDelaySeconds: 120
-      periodSeconds: 10
-      timeoutSeconds: 5
-      failureThreshold: 60
-    customLivenessProbe:
-      tcpSocket:
-        port: 3306
-      initialDelaySeconds: 30
-      periodSeconds: 10
-      timeoutSeconds: 5
-    customReadinessProbe:
-      tcpSocket:
-        port: 3306
-      initialDelaySeconds: 15
-      periodSeconds: 10
-      timeoutSeconds: 5
+    # customStartupProbe:
+    #   tcpSocket:
+    #     port: 3306
+    #   initialDelaySeconds: 120
+    #   periodSeconds: 10
+    #   timeoutSeconds: 5
+    #   failureThreshold: 60
+    # customLivenessProbe:
+    #   tcpSocket:
+    #     port: 3306
+    #   initialDelaySeconds: 30
+    #   periodSeconds: 10
+    #   timeoutSeconds: 5
+    # customReadinessProbe:
+    #   tcpSocket:
+    #     port: 3306
+    #   initialDelaySeconds: 15
+    #   periodSeconds: 10
+    #   timeoutSeconds: 5
     persistence:
       enabled: true
       storageClass: ""
