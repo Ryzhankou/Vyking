@@ -1,7 +1,12 @@
 # Infrastructure MySQL chart - Bitnami MySQL + backup CronJob
 # Service: archer-db-mysql, Secret: archer-db (matches applications/helm_chart backend config)
+# Note: bitnami/mysql deprecated on Docker Hub; using bitnamilegacy/mysql for migration
 
 archer-db:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/mysql
+    tag: "8.0"
   auth:
     rootPassword: "rootpassword"   # Change in production!
     database: "gamedb"
@@ -43,9 +48,9 @@ archer-db:
   volumePermissions:
     enabled: false
 
-# Backup CronJob - runs every 5 minutes
+# Backup CronJob - runs every 5 minutes (uses official mysql for mysqldump)
 backup:
   enabled: true
   schedule: "*/5 * * * *"
   pvcSize: 5Gi
-  image: bitnami/mysql:8.0
+  image: mysql:8.0
