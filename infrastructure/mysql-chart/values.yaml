@@ -7,8 +7,10 @@ archer-db:
     repository: bitnamilegacy/mysql
     tag: "8.0"
 
-  # Root-level: Bitnami mounts this to /docker-entrypoint-initdb.d (first run only)
+  # Root-level: Bitnami mounts these
   initdbScriptsConfigMap: "archer-db-mysql-init"
+  # Runs every startup - ensures gameuser@'%' for remote connections (Bitnami creates gameuser@'localhost' only)
+  startdbScriptsConfigMap: "archer-db-mysql-startdb"
 
   auth:
     rootPassword: "rootpassword"   # Change in production!

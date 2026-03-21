@@ -63,8 +63,15 @@ helm-db-clean:
 	@kubectl delete secret archer-db -n game-backend --ignore-not-found 2>/dev/null || true
 	@kubectl delete configmap archer-db-mysql-init -n game-backend --ignore-not-found 2>/dev/null || true
 	@kubectl delete cronjob mysql-backup -n game-backend --ignore-not-found 2>/dev/null || true
-	@kubectl delete pvc data-archer-db-mysql-0 mysql-backup-pvc -n game-backend --ignore-not-found 2>/dev/null || true
+	@kubectl delete pvc data-archer-db-mysql-0 data-infrastructure-archer-db-0 mysql-backup-pvc -n game-backend --ignore-not-found 2>/dev/null || true
 	@sleep 2
+
+# Reset MySQL data (fixes Error 1130 when PVC has old data). Run then sync infrastructure in Argo CD.
+mysql-reset-pvc:
+	@echo "Deleting MySQL PVC - data will be lost, init scripts will run on next start"
+	@kubectl delete pvc data-infrastructure-archer-db-0 -n game-backend --ignore-not-found 2>/dev/null || true
+	@kubectl delete pod -n game-backend -l app.kubernetes.io/name=archer-db --ignore-not-found 2>/dev/null || true
+	@echo "Wait 3-5 min for MySQL to re-initialize, then: kubectl rollout restart deployment -n game-backend -l app.kubernetes.io/name=game-backend"
 
 # Reinstall DB (clean + install). Use when migrating or fixing immutable StatefulSet errors.
 helm-db-reinstall: helm-db-clean helm-db-install
