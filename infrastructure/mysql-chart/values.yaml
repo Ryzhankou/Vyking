@@ -15,6 +15,26 @@ archer-db:
     existingSecret: ""
 
   primary:
+    # Override probes: bitnamilegacy/mysql uses different socket path; use TCP instead
+    customStartupProbe:
+      tcpSocket:
+        port: 3306
+      initialDelaySeconds: 15
+      periodSeconds: 10
+      timeoutSeconds: 5
+      failureThreshold: 30
+    customLivenessProbe:
+      tcpSocket:
+        port: 3306
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      timeoutSeconds: 5
+    customReadinessProbe:
+      tcpSocket:
+        port: 3306
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      timeoutSeconds: 5
     persistence:
       enabled: true
       storageClass: ""
