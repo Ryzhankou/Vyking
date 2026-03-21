@@ -16,13 +16,14 @@ archer-db:
 
   primary:
     # Override probes: bitnamilegacy/mysql uses different socket path; use TCP instead
+    # MySQL with init scripts can take 1-2 min on first start
     customStartupProbe:
       tcpSocket:
         port: 3306
-      initialDelaySeconds: 15
+      initialDelaySeconds: 60
       periodSeconds: 10
       timeoutSeconds: 5
-      failureThreshold: 30
+      failureThreshold: 60
     customLivenessProbe:
       tcpSocket:
         port: 3306
@@ -48,6 +49,7 @@ archer-db:
         memory: "512Mi"
     configuration: |-
       [mysqld]
+      bind-address=0.0.0.0
       default_authentication_plugin=mysql_native_password
       skip-name-resolve
       explicit_defaults_for_timestamp
