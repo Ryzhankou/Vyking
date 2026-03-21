@@ -3,14 +3,23 @@ kind: ConfigMap
 metadata:
   name: archer-db-mysql-init
 data:
-  01-init.sql: |
+  01-init.sh: |
+    #!/bin/bash
+    set -e
+
+    mysql --socket=/opt/bitnami/mysql/tmp/mysql.sock -uroot <<'EOF'
+    CREATE DATABASE IF NOT EXISTS gamedb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+    CREATE USER IF NOT EXISTS 'gameuser'@'%' IDENTIFIED BY 'gamepass';
+    GRANT ALL PRIVILEGES ON gamedb.* TO 'gameuser'@'%';
+    FLUSH PRIVILEGES;
+
     USE gamedb;
 
     CREATE TABLE IF NOT EXISTS leaderboard (
-        id          BIGINT       NOT NULL AUTO_INCREMENT,
-        player_name VARCHAR(64)  NOT NULL,
-        score       INT          NOT NULL DEFAULT 0,
-        created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        id BIGINT NOT NULL AUTO_INCREMENT,
+        player_name VARCHAR(64) NOT NULL,
+        score INT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id),
         INDEX idx_score (score DESC),
         INDEX idx_created_at (created_at)
@@ -22,3 +31,4 @@ data:
         ('Legolas',    390),
         ('Merida',     350),
         ('Arrow',      300);
+    EOF
