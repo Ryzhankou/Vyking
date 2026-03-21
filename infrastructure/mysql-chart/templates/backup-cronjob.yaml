@@ -44,7 +44,7 @@ spec:
                   find /backups -name "gamedb_*.sql.gz" -mtime +7 -delete
               env:
                 - name: DB_HOST
-                  value: "archer-db-mysql"
+                  value: {{ .Release.Name }}-archer-db
                 - name: DB_PORT
                   value: "3306"
                 - name: DB_NAME
@@ -54,7 +54,7 @@ spec:
                 - name: DB_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: archer-db
+                      name: {{ .Release.Name }}-archer-db
                       key: mysql-password
               volumeMounts:
                 - name: backup-storage

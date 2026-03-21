@@ -46,13 +46,13 @@ backend:
       cpu: "500m"
       memory: "256Mi"
   env:
-    DB_HOST: "archer-db-mysql"   # Database service (from database-chart release)
+    DB_HOST: "infrastructure-archer-db"   # Bitnami MySQL service (release-name + subchart alias)
     DB_PORT: "3306"
     DB_NAME: "gamedb"
     DB_USER: "gameuser"
     PORT: "8080"
-  # Must match Bitnami MySQL secret: <release-name> (archer-db from subchart alias)
-  dbSecretName: "archer-db"
+  # Must match Bitnami MySQL secret: <release-name>-archer-db
+  dbSecretName: "infrastructure-archer-db"
   dbSecretKey: "mysql-password"   # Bitnami MySQL secret key for auth.password
 
 # Ingress - two ingresses (same host, different paths) for cross-namespace routing

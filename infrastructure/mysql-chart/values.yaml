@@ -1,5 +1,5 @@
 # Infrastructure MySQL - Bitnami MySQL + backup CronJob
-# Service: archer-db-mysql, Secret: archer-db
+# Service: <release>-archer-db, Secret: <release>-archer-db (e.g. infrastructure-archer-db)
 
 archer-db:
   image:
