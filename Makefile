@@ -1,7 +1,22 @@
+KIND_CLUSTER ?= dev-global-cluster-0
+
 k8s-create: # Create a Kubernetes cluster using kind with the configuration specified in k8s/kind/kind-dev.yaml
-	@kind create cluster --name dev-global-cluster-0 --config k8s/kind/kind-dev.yaml
+	@kind create cluster --name $(KIND_CLUSTER) --config k8s/kind/kind-dev.yaml
+	@$(MAKE) k8s-fix-inotify KIND_CLUSTER=$(KIND_CLUSTER)
+
+k8s-fix-inotify: # Apply inotify limits workaround for "too many open files" (MySQL, fsnotify watchers)
+	@echo "Applying inotify limits workaround for 'too many open files'..."
+	@NODE=$$(kind get nodes --name $(KIND_CLUSTER) 2>/dev/null | head -1); \
+	if [ -n "$$NODE" ]; then \
+	  docker exec -t $$NODE sysctl -w fs.inotify.max_user_watches=1048576 2>/dev/null || true; \
+	  docker exec -t $$NODE sysctl -w fs.inotify.max_user_instances=512 2>/dev/null || true; \
+	  echo "Inotify limits applied."; \
+	else \
+	  echo "No Kind nodes found. Create cluster first: make k8s-create"; \
+	fi
+
 k8s-delete: # Delete the Kubernetes cluster named dev-global-cluster-0
-	@kind delete cluster --name dev-global-cluster-0
+	@kind delete cluster --name $(KIND_CLUSTER)
 
 # k8s-ingress: # Apply the ingress configuration specified in k8s/ingress/ingress.yaml to the cluster
 # 	@helm upgrade --install nginx-ingress oci://ghcr.io/nginx/charts/nginx-ingress --version 2.4.1 -n nginx-ingress --create-namespace -f k8s/ingress/nginx-ingress-kind-values.yaml
@@ -67,7 +82,7 @@ helm-app-install:
 kind-build-load:
 	@docker compose build frontend game-backend
 	@docker pull busybox:1.36 2>/dev/null || true
-	@kind load docker-image vyking-frontend:latest vyking-game-backend:latest busybox:1.36 --name dev-global-cluster-0
+	@kind load docker-image vyking-frontend:latest vyking-game-backend:latest busybox:1.36 --name $(KIND_CLUSTER)
 
 # Install app with local images (run kind-build-load first)
 helm-app-install-kind:

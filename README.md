@@ -157,6 +157,16 @@ Argo CD syncs both applications from the Git repository.
 | `helm-db-install` | Install MySQL via Helm (manual, non-GitOps) |
 | `helm-app-install` | Install app via Helm (manual, non-GitOps) |
 | `helm-app-install-kind` | Install app with local images (manual) |
+| `k8s-fix-inotify` | Apply inotify limits workaround for "too many open files" |
+
+## Troubleshooting
+
+### MySQL: "too many open files" / fsnotify watcher errors
+
+Kind nodes share the host kernel; inotify limits may be too low for MySQL and other workloads. If you see `unable to create fsnotify watcher: too many open files` or similar:
+
+1. **New clusters**: `make k8s-create` applies the fix automatically.
+2. **Existing clusters**: Run `make k8s-fix-inotify` to raise `fs.inotify.max_user_watches` and `fs.inotify.max_user_instances`.
 
 ## License
 
