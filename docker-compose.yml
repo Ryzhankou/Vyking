@@ -1,0 +1,55 @@
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: game-db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: gamedb
+      MYSQL_USER: gameuser
+      MYSQL_PASSWORD: gamepass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./infrastructure/Mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "gameuser", "-pgamepass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  game-backend:
+    build:
+      context: ./applications/backend
+      dockerfile: Dockerfile
+    container_name: game-backend
+    restart: unless-stopped
+    environment:
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_NAME: gamedb
+      DB_USER: gameuser
+      DB_PASSWORD: gamepass
+      PORT: "8080"
+    ports:
+      - "9090:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./applications/frontend
+      dockerfile: Dockerfile
+    container_name: game-frontend
+    restart: unless-stopped
+    ports:
+      - "8888:80"
+    depends_on:
+      - game-backend
+
+volumes:
+  mysql_data:

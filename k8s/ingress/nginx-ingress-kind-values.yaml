@@ -1,0 +1,7 @@
+controller:
+  hostNetwork: true
+  service:
+    type: ClusterIP
+  dnsPolicy: ClusterFirstWithHostNet
+  config:
+    use-forwarded-headers: "true"

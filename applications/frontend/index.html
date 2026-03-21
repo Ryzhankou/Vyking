@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Archer's Challenge</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#07080f;color:#e0e0e0;font-family:'Segoe UI',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;overflow-x:hidden}
+
+/* ── HEADER ── */
+header{width:100%;max-width:960px;display:flex;align-items:center;justify-content:space-between;padding:14px 20px}
+.logo{font-size:1.3rem;font-weight:700;color:#f0a500;letter-spacing:1px;text-shadow:0 0 12px rgba(240,165,0,.5)}
+.hud{display:flex;gap:20px}
+.hud-item{text-align:center}
+.hud-item .val{font-size:1.4rem;font-weight:700;color:#fff}
+.hud-item .lbl{font-size:.65rem;text-transform:uppercase;color:#666;letter-spacing:.5px}
+
+/* ── CANVAS WRAPPER ── */
+.canvas-wrap{position:relative;width:100%;max-width:960px;border-radius:16px;overflow:hidden;box-shadow:0 0 60px rgba(0,0,0,.8)}
+#gameCanvas{display:block;width:100%;height:auto}
+
+/* ── SETUP OVERLAY ── */
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(7,8,15,.85);backdrop-filter:blur(6px);border-radius:16px;z-index:10;gap:18px;transition:opacity .3s}
+.overlay.hidden{opacity:0;pointer-events:none}
+.overlay h2{font-size:2rem;color:#f0a500;text-shadow:0 0 20px rgba(240,165,0,.6)}
+.overlay p{color:#888;font-size:.9rem}
+.ov-input{padding:12px 20px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.15);border-radius:10px;color:#fff;font-size:1rem;outline:none;width:260px;text-align:center}
+.ov-input:focus{border-color:#f0a500}
+.ov-btn{padding:13px 40px;background:linear-gradient(135deg,#f0a500,#e05a00);border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:transform .1s,box-shadow .2s;box-shadow:0 4px 20px rgba(240,165,0,.3)}
+.ov-btn:hover{transform:translateY(-2px);box-shadow:0 6px 28px rgba(240,165,0,.5)}
+.ov-btn:active{transform:scale(.97)}
+
+/* ── RESULT OVERLAY ── */
+.result-ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9;pointer-events:none}
+.score-pop{font-size:4rem;font-weight:900;text-shadow:0 0 30px currentColor;opacity:0;transform:scale(.5);transition:all .4s cubic-bezier(.34,1.56,.64,1)}
+.score-pop.show{opacity:1;transform:scale(1)}
+.score-pop.bullseye{color:#f0a500}
+.score-pop.hit{color:#27ae60}
+.score-pop.miss{color:#e74c3c}
+.ring-label{font-size:1rem;color:#aaa;margin-top:6px;opacity:0;transition:opacity .4s .2s}
+.ring-label.show{opacity:1}
+
+/* ── CONTROLS ── */
+.controls{width:100%;max-width:960px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:12px 0}
+.ctrl-panel{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:16px}
+.ctrl-panel h3{font-size:.7rem;text-transform:uppercase;color:#555;letter-spacing:.8px;margin-bottom:10px}
+
+/* Wind panel */
+.wind-box{display:flex;align-items:center;gap:14px}
+.compass{width:72px;height:72px;position:relative;flex-shrink:0}
+.compass svg{width:100%;height:100%}
+.wind-info{flex:1}
+.wind-speed{font-size:1.6rem;font-weight:700;color:#7ec8f0}
+.wind-unit{font-size:.75rem;color:#555;margin-left:3px}
+.wind-dir-txt{font-size:.8rem;color:#888;margin-top:2px}
+.wind-bar-wrap{margin-top:6px;background:rgba(255,255,255,.06);border-radius:4px;height:6px;overflow:hidden}
+.wind-bar{height:100%;background:linear-gradient(90deg,#3498db,#7ec8f0);border-radius:4px;transition:width .5s}
+
+/* Aim panel */
+.aim-controls{display:flex;flex-direction:column;gap:10px}
+.slider-row{display:flex;align-items:center;gap:10px}
+.slider-row label{font-size:.8rem;color:#888;width:55px;flex-shrink:0}
+.slider-row input[type=range]{flex:1;-webkit-appearance:none;height:4px;border-radius:2px;background:rgba(255,255,255,.1);outline:none;cursor:pointer}
+.slider-row input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:#f0a500;cursor:pointer;box-shadow:0 0 8px rgba(240,165,0,.5)}
+.slider-row .val{font-size:.85rem;color:#fff;width:36px;text-align:right;flex-shrink:0}
+
+/* Action panel */
+.action-panel{display:flex;flex-direction:column;gap:10px;justify-content:center}
+.toggle-row{display:flex;align-items:center;gap:10px;font-size:.85rem;color:#888}
+.toggle{position:relative;width:42px;height:22px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.toggle-slider{position:absolute;inset:0;background:rgba(255,255,255,.1);border-radius:11px;cursor:pointer;transition:.2s}
+.toggle-slider:before{content:'';position:absolute;left:3px;top:3px;width:16px;height:16px;background:#555;border-radius:50%;transition:.2s}
+.toggle input:checked+.toggle-slider{background:rgba(240,165,0,.4)}
+.toggle input:checked+.toggle-slider:before{transform:translateX(20px);background:#f0a500}
+.shoot-btn{padding:14px;background:linear-gradient(135deg,#e05a00,#f0a500);border:none;border-radius:10px;color:#fff;font-size:1rem;font-weight:700;cursor:pointer;letter-spacing:.5px;transition:all .2s;box-shadow:0 4px 16px rgba(224,90,0,.3)}
+.shoot-btn:hover:not(:disabled){box-shadow:0 6px 24px rgba(240,165,0,.5);transform:translateY(-1px)}
+.shoot-btn:disabled{background:linear-gradient(135deg,#333,#444);box-shadow:none;cursor:not-allowed;opacity:.6}
+.next-btn{padding:14px;background:linear-gradient(135deg,#1a6e2e,#27ae60);border:none;border-radius:10px;color:#fff;font-size:.9rem;font-weight:700;cursor:pointer;transition:all .2s;display:none}
+.next-btn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(39,174,96,.4)}
+
+/* ── LEADERBOARD ── */
+.lb-section{width:100%;max-width:960px;padding:0 0 30px}
+.lb-section h2{font-size:1rem;color:#f0a500;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.lb-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.lb-table th{text-align:left;color:#444;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.06)}
+.lb-table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04)}
+.lb-table tr:hover td{background:rgba(255,255,255,.02)}
+.medal-1{color:#f0a500}
+.medal-2{color:#aaa}
+.medal-3{color:#cd7f32}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🏹 Archer's Challenge</div>
+  <div class="hud">
+    <div class="hud-item"><div class="val" id="hud-round">—</div><div class="lbl">Round</div></div>
+    <div class="hud-item"><div class="val" id="hud-attempts">—</div><div class="lbl">Attempts</div></div>
+    <div class="hud-item"><div class="val" id="hud-score">0</div><div class="lbl">Score</div></div>
+    <div class="hud-item"><div class="val" id="hud-player">—</div><div class="lbl">Player</div></div>
+  </div>
+</header>
+
+<div class="canvas-wrap">
+  <canvas id="gameCanvas" width="960" height="480"></canvas>
+
+  <!-- Setup overlay -->
+  <div class="overlay" id="setupOverlay">
+    <h2>🏹 Archer's Challenge</h2>
+    <p>Test your aim against the wind</p>
+    <input class="ov-input" id="nameInput" type="text" placeholder="Enter your name" maxlength="24"/>
+    <div style="display:flex;align-items:center;gap:10px;font-size:.85rem;color:#888">
+      <label class="toggle"><input type="checkbox" id="setupMoving"/><span class="toggle-slider"></span></label>
+      Moving target
+    </div>
+    <button class="ov-btn" onclick="beginGame()">Draw Your Bow</button>
+  </div>
+
+  <!-- Score popup -->
+  <div class="result-ov">
+    <div class="score-pop" id="scorePop"></div>
+    <div class="ring-label" id="ringLabel"></div>
+  </div>
+</div>
+
+<div class="controls">
+  <!-- Wind -->
+  <div class="ctrl-panel">
+    <h3>🌬 Wind</h3>
+    <div class="wind-box">
+      <div class="compass">
+        <svg viewBox="0 0 72 72">
+          <circle cx="36" cy="36" r="34" fill="rgba(255,255,255,.04)" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+          <text x="36" y="11" text-anchor="middle" fill="#555" font-size="8">N</text>
+          <text x="36" y="66" text-anchor="middle" fill="#555" font-size="8">S</text>
+          <text x="8" y="40" text-anchor="middle" fill="#555" font-size="8">W</text>
+          <text x="65" y="40" text-anchor="middle" fill="#555" font-size="8">E</text>
+          <line id="windNeedle" x1="36" y1="36" x2="36" y2="10" stroke="#7ec8f0" stroke-width="2.5" stroke-linecap="round"/>
+          <circle cx="36" cy="36" r="3" fill="#7ec8f0"/>
+        </svg>
+      </div>
+      <div class="wind-info">
+        <div><span class="wind-speed" id="windSpeedTxt">0</span><span class="wind-unit">m/s</span></div>
+        <div class="wind-dir-txt" id="windDirTxt">Calm</div>
+        <div class="wind-bar-wrap"><div class="wind-bar" id="windBar" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Aim -->
+  <div class="ctrl-panel">
+    <h3>🎯 Aim</h3>
+    <div class="aim-controls">
+      <div class="slider-row">
+        <label>Angle</label>
+        <input type="range" id="angleSlider" min="5" max="85" value="40"/>
+        <span class="val" id="angleVal">40°</span>
+      </div>
+      <div class="slider-row">
+        <label>Power</label>
+        <input type="range" id="powerSlider" min="10" max="100" value="65"/>
+        <span class="val" id="powerVal">65%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Shoot -->
+  <div class="ctrl-panel action-panel">
+    <div class="toggle-row">
+      <label class="toggle"><input type="checkbox" id="movingToggle"/><span class="toggle-slider"></span></label>
+      Moving target
+    </div>
+    <button class="shoot-btn" id="shootBtn" onclick="shoot()">🏹 Shoot!</button>
+    <button class="next-btn" id="nextBtn" onclick="nextRound()">Next Round →</button>
+  </div>
+</div>
+
+<div class="lb-section">
+  <h2>🏆 Leaderboard</h2>
+  <table class="lb-table">
+    <thead><tr><th>#</th><th>Player</th><th>Score</th><th>Date</th></tr></thead>
+    <tbody id="lbBody"><tr><td colspan="4" style="color:#444;text-align:center;padding:12px">Loading…</td></tr></tbody>
+  </table>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════════════════
+const API = window.BACKEND_URL || '';
+const CANVAS_W = 960, CANVAS_H = 480;
+const GRAVITY = 520;          // px/s²
+const MAX_ROUNDS = 5;
+
+// Scene positions (in canvas px)
+const GROUND_Y = 400;
+const ARCHER = { x: 100, y: GROUND_Y };   // feet on ground
+const TARGET_X = 820;
+const TARGET_BASE_Y = 270;           // center of target when static
+const TARGET_R = [8, 18, 30, 44, 60]; // vertical zone radii (center→outer)
+const TARGET_WIDTH = 14;               // target depth (facing archer, side view)
+const TARGET_X_TOLERANCE = 25;         // X collision tolerance (arrow reaches target plane)
+const RING_SCORES = [100, 80, 60, 40, 20];
+const RING_LABELS = ['BULLSEYE!', 'Inner Ring', 'Middle Ring', 'Outer Ring', 'Edge'];
+const MAX_ATTEMPTS_PER_ROUND = 3;
+const RING_COLORS = ['#f1c40f','#e74c3c','#3498db','#95a5a6','#ecf0f1'];
+
+// ═══════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════
+let G = {
+  phase: 'setup',   // setup | aiming | flying | result | gameover
+  name: '',
+  round: 0,
+  attemptsThisRound: 0,
+  totalScore: 0,
+  wind: { speed: 0, angleDeg: 0 },
+  targetY: TARGET_BASE_Y,
+  targetMoving: false,
+  targetDir: 1,
+  arrow: null,
+  trail: [],
+  aim: { angle: 40, power: 65 },
+  lastHit: null,
+  roundScores: [],
+};
+
+let stars = [];
+let clouds = [];
+let animFrame = null;
+let lastTime = 0;
+let bowPulse = 0;
+let targetGlow = 0;
+
+// ═══════════════════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════════════════
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+function init() {
+  // Generate stars
+  stars = Array.from({length:120}, () => ({
+    x: Math.random() * CANVAS_W,
+    y: Math.random() * CANVAS_H * 0.6,
+    r: Math.random() * 1.5 + 0.3,
+    twinkle: Math.random() * Math.PI * 2,
+  }));
+  // Generate clouds
+  clouds = Array.from({length:5}, () => ({
+    x: Math.random() * CANVAS_W,
+    y: 40 + Math.random() * 100,
+    w: 80 + Math.random() * 120,
+    speed: 8 + Math.random() * 12,
+  }));
+
+  setupSliders();
+  requestAnimationFrame(loop);
+  loadLeaderboard();
+  document.getElementById('nameInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter') beginGame();
+  });
+  document.getElementById('setupMoving').addEventListener('change', e => {
+    document.getElementById('movingToggle').checked = e.target.checked;
+  });
+  document.getElementById('movingToggle').addEventListener('change', e => {
+    G.targetMoving = e.target.checked;
+  });
+}
+
+function setupSliders() {
+  const aSlider = document.getElementById('angleSlider');
+  const pSlider = document.getElementById('powerSlider');
+  aSlider.addEventListener('input', () => {
+    G.aim.angle = +aSlider.value;
+    document.getElementById('angleVal').textContent = aSlider.value + '°';
+  });
+  pSlider.addEventListener('input', () => {
+    G.aim.power = +pSlider.value;
+    document.getElementById('powerVal').textContent = pSlider.value + '%';
+  });
+}
+
+// ═══════════════════════════════════════════════════════
+//  GAME FLOW
+// ═══════════════════════════════════════════════════════
+function beginGame() {
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) { document.getElementById('nameInput').focus(); return; }
+  G.name = name;
+  G.totalScore = 0;
+  G.round = 0;
+  G.attemptsThisRound = 0;
+  G.roundScores = [];
+  G.targetMoving = document.getElementById('setupMoving').checked;
+  document.getElementById('movingToggle').checked = G.targetMoving;
+  document.getElementById('hud-player').textContent = name.length > 10 ? name.slice(0,10)+'…' : name;
+  document.getElementById('setupOverlay').classList.add('hidden');
+  nextRound();
+}
+
+function nextRound() {
+  if (G.round >= MAX_ROUNDS) { endGame(); return; }
+  G.round++;
+  G.attemptsThisRound = 0;
+  G.arrow = null;
+  G.trail = [];
+  G.lastHit = null;
+  G.targetY = TARGET_BASE_Y;
+  G.targetDir = 1;
+  G.phase = 'aiming';
+
+  // Randomise wind
+  G.wind.speed = parseFloat((Math.random() * 18).toFixed(1));
+  G.wind.angleDeg = Math.floor(Math.random() * 360);
+  updateWindUI();
+
+  document.getElementById('hud-round').textContent = G.round + '/' + MAX_ROUNDS;
+  document.getElementById('hud-attempts').textContent = G.attemptsThisRound + '/' + MAX_ATTEMPTS_PER_ROUND;
+  document.getElementById('hud-score').textContent = G.totalScore;
+  document.getElementById('shootBtn').disabled = false;
+  document.getElementById('shootBtn').style.display = 'block';
+  document.getElementById('nextBtn').style.display = 'none';
+  hidePop();
+}
+
+function endGame() {
+  G.phase = 'gameover';
+  saveScore();
+  // Show gameover on canvas, handled in draw()
+  setTimeout(() => {
+    document.getElementById('setupOverlay').classList.remove('hidden');
+    document.getElementById('setupOverlay').querySelector('h2').textContent = '🏹 Game Over!';
+    document.getElementById('setupOverlay').querySelector('p').textContent =
+      G.name + ' scored ' + G.totalScore + ' pts';
+    document.getElementById('setupOverlay').querySelector('button').textContent = 'Play Again';
+    // reset name for replay
+    G.round = 0;
+    G.totalScore = 0;
+  }, 1200);
+}
+
+function shoot() {
+  if (G.phase !== 'aiming') return;
+  G.phase = 'flying';
+  document.getElementById('shootBtn').disabled = true;
+  bowPulse = 1;
+
+  const angleRad = G.aim.angle * Math.PI / 180;
+  const speed = G.aim.power * 9.5;
+  G.arrow = {
+    x: ARCHER.x + 28,
+    y: ARCHER.y - 115,
+    vx: Math.cos(angleRad) * speed,
+    vy: -Math.sin(angleRad) * speed,
+    angle: angleRad,
+    stuck: false,
+    stuckInTarget: false,
+  };
+  G.trail = [];
+}
+
+function nextRoundBtn() { nextRound(); }
+
+// ═══════════════════════════════════════════════════════
+//  PHYSICS UPDATE
+// ═══════════════════════════════════════════════════════
+function update(dt) {
+  // Clamp dt to avoid spiral of death
+  if (dt > 0.1) dt = 0.1;
+
+  // Move clouds
+  clouds.forEach(c => {
+    c.x += c.speed * dt;
+    if (c.x - c.w > CANVAS_W) c.x = -c.w;
+  });
+
+  // Twinkle stars
+  stars.forEach(s => s.twinkle += dt * 2);
+
+  // Bow pulse
+  if (bowPulse > 0) bowPulse = Math.max(0, bowPulse - dt * 3);
+
+  // Target glow
+  targetGlow = (targetGlow + dt * 2) % (Math.PI * 2);
+
+  // Moving target
+  if (G.targetMoving && G.phase !== 'flying' || G.targetMoving && G.phase === 'flying') {
+    if (G.phase === 'aiming' || G.phase === 'flying') {
+      G.targetY += G.targetDir * 60 * dt;
+      if (G.targetY > TARGET_BASE_Y + 70) G.targetDir = -1;
+      if (G.targetY < TARGET_BASE_Y - 70) G.targetDir = 1;
+    }
+  }
+
+  // Arrow
+  if (G.arrow && !G.arrow.stuck) {
+    const windRad = G.wind.angleDeg * Math.PI / 180;
+    const WIND_FORCE = 45;   // horizontal wind influence (px/s² per m/s)
+    const WIND_LIFT = 28;   // vertical wind influence
+    const windX = Math.cos(windRad) * G.wind.speed * WIND_FORCE;
+    const windY = -Math.sin(windRad) * G.wind.speed * WIND_LIFT;
+
+    G.arrow.vx += windX * dt;
+    G.arrow.vy += (GRAVITY + windY) * dt;
+    G.arrow.x  += G.arrow.vx * dt;
+    G.arrow.y  += G.arrow.vy * dt;
+    G.arrow.angle = Math.atan2(G.arrow.vy, G.arrow.vx);
+
+    // Trail
+    G.trail.push({ x: G.arrow.x, y: G.arrow.y, age: 0 });
+    if (G.trail.length > 40) G.trail.shift();
+
+    // Collision: vertical target facing archer (hit = arrow reaches target X, score by Y height)
+    const ARROW_TIP_OFFSET = 14;
+    const tipX = G.arrow.x + ARROW_TIP_OFFSET * Math.cos(G.arrow.angle);
+    const tipY = G.arrow.y + ARROW_TIP_OFFSET * Math.sin(G.arrow.angle);
+    const inTargetX = Math.abs(tipX - TARGET_X) < TARGET_X_TOLERANCE;
+    const distY = Math.abs(tipY - G.targetY);
+    const inTargetY = distY <= TARGET_R[TARGET_R.length - 1] + 4;
+    if (inTargetX && inTargetY) {
+      G.arrow.stuck = true;
+      G.arrow.stuckInTarget = true;
+      G.arrow.x = TARGET_X - ARROW_TIP_OFFSET * Math.cos(G.arrow.angle);
+      G.arrow.y = tipY - ARROW_TIP_OFFSET * Math.sin(G.arrow.angle);
+      handleHit(distY);
+      return;
+    }
+
+    // Collision: ground
+    if (G.arrow.y > GROUND_Y - 6) {
+      G.arrow.y = GROUND_Y - 6;
+      G.arrow.stuck = true;
+      G.arrow.stuckInTarget = false;
+      handleHit(null);
+      return;
+    }
+
+    // Out of bounds
+    if (G.arrow.x > CANVAS_W + 50 || G.arrow.y > CANVAS_H + 50) {
+      G.arrow.stuck = true;
+      G.arrow.stuckInTarget = false;
+      handleHit(null);
+      return;
+    }
+  }
+
+  // Age trail
+  G.trail.forEach(t => t.age += dt);
+}
+
+function handleHit(dist) {
+  G.phase = 'result';
+  G.attemptsThisRound++;
+  let score = 0, label = 'Miss!', cls = 'miss';
+
+  if (dist !== null) {
+    for (let i = 0; i < TARGET_R.length; i++) {
+      if (dist <= TARGET_R[i]) {
+        score = RING_SCORES[i];
+        label = RING_LABELS[i];
+        cls = i === 0 ? 'bullseye' : 'hit';
+        break;
+      }
+    }
+    if (score === 0 && dist <= TARGET_R[TARGET_R.length - 1] + 4) {
+      score = RING_SCORES[RING_SCORES.length - 1];
+      label = RING_LABELS[RING_LABELS.length - 1];
+      cls = 'hit';
+    }
+    if (score === 0) { label = 'Miss!'; cls = 'miss'; }
+  }
+
+  G.lastHit = { score, label, cls };
+  G.totalScore += score;
+  G.roundScores.push(score);
+  document.getElementById('hud-score').textContent = G.totalScore;
+
+  // Show popup
+  const pop = document.getElementById('scorePop');
+  const rl  = document.getElementById('ringLabel');
+  pop.textContent = score > 0 ? '+' + score : 'Miss!';
+  pop.className = 'score-pop ' + cls;
+  rl.textContent = label;
+  rl.className = 'ring-label';
+  void pop.offsetWidth;
+  pop.classList.add('show');
+  rl.classList.add('show');
+
+  document.getElementById('hud-attempts').textContent = G.attemptsThisRound + '/' + MAX_ATTEMPTS_PER_ROUND;
+
+  setTimeout(() => {
+    document.getElementById('shootBtn').style.display = 'none';
+    const nb = document.getElementById('nextBtn');
+    nb.style.display = 'block';
+    const canRetry = score === 0 && G.attemptsThisRound < MAX_ATTEMPTS_PER_ROUND;
+    if (canRetry) {
+      nb.textContent = '🔄 Retry';
+      nb.onclick = retryShot;
+    } else {
+      nb.textContent = G.round >= MAX_ROUNDS ? '🏆 Finish Game' : 'Next Round →';
+      nb.onclick = G.round >= MAX_ROUNDS ? endGame : nextRound;
+    }
+  }, 600);
+}
+
+function retryShot() {
+  G.roundScores.pop();
+  G.arrow = null;
+  G.trail = [];
+  G.lastHit = null;
+  G.targetY = TARGET_BASE_Y;
+  G.targetDir = 1;
+  G.phase = 'aiming';
+
+  document.getElementById('hud-score').textContent = G.totalScore;
+  document.getElementById('hud-attempts').textContent = G.attemptsThisRound + '/' + MAX_ATTEMPTS_PER_ROUND;
+  document.getElementById('shootBtn').disabled = false;
+  document.getElementById('shootBtn').style.display = 'block';
+  document.getElementById('nextBtn').style.display = 'none';
+  hidePop();
+}
+
+function hidePop() {
+  document.getElementById('scorePop').className = 'score-pop';
+  document.getElementById('ringLabel').className = 'ring-label';
+}
+
+async function saveScore() {
+  try {
+    await fetch(API + '/api/archer/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ player_name: G.name, score: G.totalScore }),
+    });
+    loadLeaderboard();
+  } catch(e) { console.warn('Save score failed', e); }
+}
+
+async function loadLeaderboard() {
+  try {
+    const res = await fetch(API + '/api/leaderboard');
+    const data = await res.json();
+    const tbody = document.getElementById('lbBody');
+    if (!data || data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:#444;text-align:center;padding:12px">No scores yet</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(e => {
+      const med = e.rank === 1 ? '<span class="medal-1">🥇</span>' :
+                  e.rank === 2 ? '<span class="medal-2">🥈</span>' :
+                  e.rank === 3 ? '<span class="medal-3">🥉</span>' : e.rank;
+      return `<tr><td>${med}</td><td>${esc(e.player_name)}</td><td><strong>${e.score}</strong></td><td style="color:#444;font-size:.75rem">${e.created_at.split(' ')[0]}</td></tr>`;
+    }).join('');
+  } catch { }
+}
+
+function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ═══════════════════════════════════════════════════════
+//  WIND UI
+// ═══════════════════════════════════════════════════════
+function updateWindUI() {
+  const { speed, angleDeg } = G.wind;
+  document.getElementById('windSpeedTxt').textContent = speed.toFixed(1);
+  document.getElementById('windBar').style.width = Math.min(speed / 20 * 100, 100) + '%';
+
+  // Compass needle: points in wind direction
+  const rad = angleDeg * Math.PI / 180;
+  const cx = 36, cy = 36, len = 26;
+  const x2 = cx + Math.sin(rad) * len;
+  const y2 = cy - Math.cos(rad) * len;
+  document.getElementById('windNeedle').setAttribute('x2', x2.toFixed(1));
+  document.getElementById('windNeedle').setAttribute('y2', y2.toFixed(1));
+
+  // Direction label
+  const dirs = ['N','NE','E','SE','S','SW','W','NW'];
+  const idx = Math.round(angleDeg / 45) % 8;
+  document.getElementById('windDirTxt').textContent =
+    speed < 0.5 ? 'Calm' : dirs[idx] + ' wind';
+}
+
+// ═══════════════════════════════════════════════════════
+//  DRAWING
+// ═══════════════════════════════════════════════════════
+function draw(t) {
+  ctx.clearRect(0, 0, CANVAS_W, CANVAS_H);
+  drawSky();
+  drawStars(t);
+  drawClouds();
+  drawMountains();
+  drawGround();
+  drawWindParticles(t);
+  drawDistanceMarkers();
+  drawTarget();
+  drawArcher();
+  drawTrail();
+  drawArrow();
+}
+
+function drawSky() {
+  const grad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
+  grad.addColorStop(0, '#07080f');
+  grad.addColorStop(0.5, '#0d1b3e');
+  grad.addColorStop(1, '#1a2a5e');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, CANVAS_W, GROUND_Y);
+}
+
+function drawStars(t) {
+  stars.forEach(s => {
+    const alpha = 0.4 + 0.4 * Math.sin(s.twinkle);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+    ctx.fill();
+  });
+  // Moon
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,240,150,0.4)';
+  ctx.shadowBlur = 20;
+  ctx.beginPath();
+  ctx.arc(860, 55, 28, 0, Math.PI * 2);
+  ctx.fillStyle = '#fdf3b0';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(872, 48, 24, 0, Math.PI * 2);
+  ctx.fillStyle = '#0d1b3e';
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawClouds() {
+  clouds.forEach(c => {
+    ctx.save();
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.beginPath();
+    ctx.ellipse(c.x, c.y, c.w/2, 18, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(c.x - c.w*0.2, c.y + 8, c.w*0.35, 14, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+function drawMountains() {
+  ctx.save();
+  ctx.fillStyle = 'rgba(20,35,60,0.9)';
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y);
+  const peaks = [[0,320],[100,240],[200,300],[320,200],[450,280],[560,210],[680,260],[800,230],[900,300],[960,280],[960,GROUND_Y]];
+  peaks.forEach(([x,y]) => ctx.lineTo(x, y));
+  ctx.closePath();
+  ctx.fill();
+  // Second range (lighter)
+  ctx.fillStyle = 'rgba(30,50,90,0.7)';
+  ctx.beginPath();
+  ctx.moveTo(0,GROUND_Y);
+  const peaks2 = [[0,360],[150,310],[280,340],[400,295],[520,330],[650,300],[780,335],[960,305],[960,GROUND_Y]];
+  peaks2.forEach(([x,y]) => ctx.lineTo(x,y));
+  ctx.closePath();
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawGround() {
+  // Ground
+  const gGrad = ctx.createLinearGradient(0, GROUND_Y, 0, CANVAS_H);
+  gGrad.addColorStop(0, '#1a3a1a');
+  gGrad.addColorStop(1, '#0d1f0d');
+  ctx.fillStyle = gGrad;
+  ctx.fillRect(0, GROUND_Y, CANVAS_W, CANVAS_H - GROUND_Y);
+
+  // Grass line
+  ctx.strokeStyle = '#2d5a2d';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(0, GROUND_Y);
+  ctx.lineTo(CANVAS_W, GROUND_Y);
+  ctx.stroke();
+
+  // Grass tufts
+  ctx.strokeStyle = '#3a7a3a';
+  ctx.lineWidth = 1.5;
+  for (let x = 20; x < CANVAS_W; x += 30 + Math.sin(x)*8) {
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND_Y);
+    ctx.lineTo(x-3, GROUND_Y - 6);
+    ctx.moveTo(x, GROUND_Y);
+    ctx.lineTo(x+3, GROUND_Y - 7);
+    ctx.stroke();
+  }
+}
+
+function drawWindParticles(t) {
+  if (G.wind.speed < 0.5) return;
+  const windRad = G.wind.angleDeg * Math.PI / 180;
+  const wx = Math.cos(windRad);
+  const wy = -Math.sin(windRad);
+  const speed = G.wind.speed * 20;
+  const count = Math.floor(G.wind.speed * 2);
+  const elapsed = t * 0.001;
+
+  ctx.save();
+  ctx.strokeStyle = 'rgba(126,200,240,0.2)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < count; i++) {
+    const phase = (i / count + elapsed * speed / 400) % 1;
+    const x = (phase * CANVAS_W * 1.5 - CANVAS_W * 0.25 + Math.sin(i * 137.5) * 200 + CANVAS_W) % CANVAS_W;
+    const y = (Math.sin(i * 52.3) * 0.4 + 0.5) * GROUND_Y;
+    const len = 15 + G.wind.speed * 2;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + wx * len, y + wy * len);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawDistanceMarkers() {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+  ctx.setLineDash([4,8]);
+  ctx.lineWidth = 1;
+  for (let x = 200; x < CANVAS_W - 50; x += 200) {
+    ctx.beginPath(); ctx.moveTo(x, GROUND_Y - 40); ctx.lineTo(x, GROUND_Y); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,255,255,0.15)';
+    ctx.font = '10px Segoe UI';
+    ctx.fillText(Math.round((x - ARCHER.x) / 3) + 'm', x - 12, GROUND_Y - 45);
+  }
+  ctx.setLineDash([]);
+  ctx.restore();
+}
+
+function drawTarget() {
+  const tx = TARGET_X, ty = G.targetY;
+  const glowAlpha = 0.15 + 0.08 * Math.sin(targetGlow);
+  const halfW = TARGET_WIDTH / 2;
+
+  // Pole (vertical support)
+  ctx.save();
+  ctx.fillStyle = '#4a2e10';
+  ctx.fillRect(tx - 3, ty + TARGET_R[TARGET_R.length-1], 6, GROUND_Y - ty - TARGET_R[TARGET_R.length-1]);
+  ctx.fillStyle = 'rgba(255,255,255,0.1)';
+  ctx.fillRect(tx - 3, ty + TARGET_R[TARGET_R.length-1], 2, GROUND_Y - ty - TARGET_R[TARGET_R.length-1]);
+  ctx.restore();
+
+  // Glow (vertical band)
+  ctx.save();
+  const halo = ctx.createLinearGradient(tx - halfW - 10, 0, tx + halfW + 10, 0);
+  halo.addColorStop(0, 'rgba(240,165,0,0)');
+  halo.addColorStop(0.4, `rgba(240,165,0,${glowAlpha * 0.5})`);
+  halo.addColorStop(0.5, `rgba(240,165,0,${glowAlpha})`);
+  halo.addColorStop(0.6, `rgba(240,165,0,${glowAlpha * 0.5})`);
+  halo.addColorStop(1, 'rgba(240,165,0,0)');
+  ctx.fillStyle = halo;
+  ctx.fillRect(tx - halfW - 10, ty - TARGET_R[TARGET_R.length-1] - 10, TARGET_WIDTH + 20, TARGET_R[TARGET_R.length-1] * 2 + 20);
+  ctx.restore();
+
+  // Vertical target facing archer (horizontal stripes = rings by height, outside→inside)
+  const colors = ['#ecf0f1','#95a5a6','#3498db','#e74c3c','#f1c40f'];
+  for (let i = TARGET_R.length - 1; i >= 0; i--) {
+    ctx.save();
+    if (i === 0) {
+      ctx.shadowColor = 'rgba(241,196,15,0.6)';
+      ctx.shadowBlur = 12;
+    }
+    ctx.fillStyle = colors[i];
+    ctx.fillRect(tx - halfW, ty - TARGET_R[i], TARGET_WIDTH, TARGET_R[i] * 2);
+    ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+    ctx.lineWidth = 0.5;
+    ctx.strokeRect(tx - halfW, ty - TARGET_R[i], TARGET_WIDTH, TARGET_R[i] * 2);
+    ctx.restore();
+  }
+
+  // Bullseye center line
+  ctx.save();
+  ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(tx - halfW, ty);
+  ctx.lineTo(tx + halfW, ty);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawArcher() {
+  const ax = ARCHER.x, ay = ARCHER.y;
+  const aimRad = G.aim.angle * Math.PI / 180;
+
+  ctx.save();
+  ctx.translate(ax, ay);
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 25, 6, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Legs
+  ctx.strokeStyle = '#2c3e50';
+  ctx.lineWidth = 5;
+  ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(-10,0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0,-30); ctx.lineTo(10,0); ctx.stroke();
+
+  // Body / cloak
+  ctx.fillStyle = '#2c3e50';
+  ctx.beginPath();
+  ctx.moveTo(-12,-30);
+  ctx.lineTo(12,-30);
+  ctx.lineTo(8,-80);
+  ctx.lineTo(-8,-80);
+  ctx.closePath();
+  ctx.fill();
+
+  // Hood
+  ctx.fillStyle = '#1a252f';
+  ctx.beginPath();
+  ctx.arc(0,-85,16,0,Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-16,-80);
+  ctx.lineTo(0,-95);
+  ctx.lineTo(16,-80);
+  ctx.closePath();
+  ctx.fill();
+
+  // Face
+  ctx.fillStyle = '#e8c49a';
+  ctx.beginPath();
+  ctx.arc(0,-88,8,0,Math.PI*2);
+  ctx.fill();
+
+  // Bow (on right side, aiming right)
+  const bowX = 18, bowY = -75;
+  const bowR = 28;
+  const startA = -Math.PI*0.6;
+  const endA = Math.PI*0.6;
+  ctx.save();
+  ctx.translate(bowX, bowY);
+  ctx.strokeStyle = '#7a4e2a';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(0, 0, bowR, startA, endA);
+  ctx.stroke();
+
+  // Bowstring (pulled back based on power)
+  const pullBack = (G.aim.power / 100) * 14 * (G.phase === 'flying' ? (1 - bowPulse) : 1);
+  const sy1 = -Math.sin(startA) * bowR - Math.cos(startA) * bowR;
+  const sx1 = Math.cos(startA) * bowR;
+  const sy2 = -Math.sin(endA) * bowR + Math.cos(endA) * bowR;
+  const sx2 = Math.cos(endA) * bowR;
+  ctx.strokeStyle = '#f0e6d3';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(sx1, -bowR * Math.sin(Math.abs(startA)));
+  ctx.lineTo(-pullBack, 0);
+  ctx.lineTo(sx2, bowR * Math.sin(endA));
+  ctx.stroke();
+  ctx.restore();
+
+  // Arm aiming
+  const armEndX = 18 + Math.cos(aimRad) * 36;
+  const armEndY = -75 - Math.sin(aimRad) * 36;
+  ctx.strokeStyle = '#2c3e50';
+  ctx.lineWidth = 4;
+  ctx.beginPath();
+  ctx.moveTo(8,-75); ctx.lineTo(armEndX, armEndY);
+  ctx.stroke();
+
+  // Aim guide (dotted line)
+  if (G.phase === 'aiming') {
+    ctx.save();
+    ctx.setLineDash([4,8]);
+    ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(armEndX, armEndY);
+    ctx.lineTo(armEndX + Math.cos(aimRad)*200, armEndY - Math.sin(aimRad)*200);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+function drawTrail() {
+  G.trail.forEach((p, i) => {
+    const alpha = Math.max(0, 0.5 - p.age * 2) * (i / G.trail.length);
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 2, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,200,100,${alpha})`;
+    ctx.fill();
+  });
+}
+
+function drawArrow() {
+  if (!G.arrow) return;
+  const { x, y, angle, stuck, stuckInTarget } = G.arrow;
+  const len = 36;
+
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(angle);
+
+  // Shaft
+  const shaftGrad = ctx.createLinearGradient(-len, 0, 0, 0);
+  shaftGrad.addColorStop(0, '#5a3010');
+  shaftGrad.addColorStop(1, '#8a5020');
+  ctx.strokeStyle = shaftGrad;
+  ctx.lineWidth = 2.5;
+  ctx.beginPath();
+  ctx.moveTo(-len, 0);
+  ctx.lineTo(8, 0);
+  ctx.stroke();
+
+  // Arrowhead
+  ctx.fillStyle = '#a0a8b0';
+  ctx.beginPath();
+  ctx.moveTo(8, 0);
+  ctx.lineTo(0, -4);
+  ctx.lineTo(14, 0);
+  ctx.lineTo(0, 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Fletching
+  ctx.fillStyle = '#cc2222';
+  ctx.beginPath();
+  ctx.moveTo(-len, 0);
+  ctx.lineTo(-len+10, -5);
+  ctx.lineTo(-len+14, 0);
+  ctx.closePath();
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-len, 0);
+  ctx.lineTo(-len+10, 5);
+  ctx.lineTo(-len+14, 0);
+  ctx.closePath();
+  ctx.fillStyle = '#ee4444';
+  ctx.fill();
+
+  // Impact flash
+  if (stuck && stuckInTarget) {
+    ctx.restore();
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.strokeStyle = 'rgba(255,240,100,0.6)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a)*5, Math.sin(a)*5);
+      ctx.lineTo(Math.cos(a)*18, Math.sin(a)*18);
+      ctx.stroke();
+    }
+  }
+
+  ctx.restore();
+}
+
+// ═══════════════════════════════════════════════════════
+//  MAIN LOOP
+// ═══════════════════════════════════════════════════════
+function loop(t) {
+  const dt = lastTime ? Math.min((t - lastTime) / 1000, 0.1) : 0;
+  lastTime = t;
+  if (G.phase !== 'setup') update(dt);
+  draw(t);
+  requestAnimationFrame(loop);
+}
+
+// ═══════════════════════════════════════════════════════
+//  START
+// ═══════════════════════════════════════════════════════
+init();
+</script>
+</body>
+</html>

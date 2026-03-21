@@ -1,0 +1,14 @@
+# Values for Kind cluster with locally built images
+# Use: make kind-build-load && make helm-app-install-kind
+
+frontend:
+  image:
+    repository: vyking-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+backend:
+  image:
+    repository: vyking-game-backend
+    tag: "latest"
+    pullPolicy: IfNotPresent

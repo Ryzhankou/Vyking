@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "game.fullname" . }}-frontend
+  namespace: {{ .Values.frontend.namespace }}
+  labels:
+    {{- include "game.labels" . | nindent 4 }}
+    {{- include "game.frontend.selectorLabels" . | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  selector:
+    {{- include "game.frontend.selectorLabels" . | nindent 4 }}
+  ports:
+    - port: {{ .Values.frontend.service.port }}
+      targetPort: 80
+      protocol: TCP
+      name: http

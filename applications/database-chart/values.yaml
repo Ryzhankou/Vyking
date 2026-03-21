@@ -1,0 +1,43 @@
+# Archer's Challenge database - MySQL (official image)
+# Deploy to game-backend namespace on backend nodes
+
+image:
+  repository: mysql
+  tag: "8.0"
+  pullPolicy: IfNotPresent
+
+auth:
+  rootPassword: "rootpassword"   # Override in production via --set
+  database: "gamedb"
+  username: "gameuser"
+  password: "gamepass"         # Override in production via --set
+
+persistence:
+  enabled: true
+  size: 8Gi
+
+resources:
+  requests:
+    cpu: "250m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+nodeSelector:
+  tier: backend
+
+# Backup CronJob - mysqldump to dedicated PVC
+backup:
+  enabled: true
+  schedule: "*/5 * * * *"   # Every 5 minutes (for demonstration)
+  image:
+    repository: mysql
+    tag: "8.0"
+    pullPolicy: IfNotPresent
+  persistence:
+    size: 2Gi
+
+service:
+  type: ClusterIP
+  port: 3306

@@ -1,0 +1,67 @@
+# Archer's Challenge - Frontend and Backend
+# Frontend: game-frontend namespace, tier=frontend nodes
+# Backend: game-backend namespace, tier=backend nodes
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Namespaces
+frontend:
+  namespace: game-frontend
+  replicaCount: 2
+  nodeSelector:
+    tier: frontend
+  image:
+    repository: your-registry/game-frontend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+    limits:
+      cpu: "200m"
+      memory: "128Mi"
+
+backend:
+  namespace: game-backend
+  replicaCount: 2
+  nodeSelector:
+    tier: backend
+  image:
+    repository: your-registry/game-backend
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8080
+  resources:
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+  env:
+    DB_HOST: "archer-db-mysql"   # Database service (from database-chart release)
+    DB_PORT: "3306"
+    DB_NAME: "gamedb"
+    DB_USER: "gameuser"
+    PORT: "8080"
+  # Must match database chart release: <release-name>-mysql
+  dbSecretName: "archer-db-mysql"
+  dbSecretKey: "mysql-password"   # Bitnami MySQL secret key for auth.password
+
+# Ingress - two ingresses (same host, different paths) for cross-namespace routing
+ingress:
+  enabled: true
+  className: "nginx"
+  host: "game.example.com"
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  tls:
+    enabled: false
+    secretName: "game-tls"

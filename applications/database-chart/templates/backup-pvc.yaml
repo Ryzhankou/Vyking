@@ -1,0 +1,15 @@
+{{- if and .Values.backup .Values.backup.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "archer-database.fullname" . }}-backup
+  labels:
+    {{- include "archer-database.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .Values.backup.persistence.size | default "2Gi" | quote }}
+{{- end }}

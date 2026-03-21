@@ -1,0 +1,54 @@
+{{- if and .Values.backup .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "archer-database.fullname" . }}-backup
+  labels:
+    {{- include "archer-database.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "archer-database.labels" . | nindent 12 }}
+            app.kubernetes.io/component: backup
+        spec:
+          restartPolicy: OnFailure
+          nodeSelector:
+            {{- toYaml .Values.nodeSelector | nindent 12 }}
+          containers:
+            - name: backup
+              image: "{{ .Values.backup.image.repository }}:{{ .Values.backup.image.tag }}"
+              imagePullPolicy: {{ .Values.backup.image.pullPolicy | default .Values.image.pullPolicy }}
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  TS=$$(date +%Y%m%d-%H%M%S)
+                  OUT="/backups/backup-$${TS}.sql"
+                  echo "Starting mysqldump to $${OUT}"
+                  export MYSQL_PWD="$$MYSQL_PASSWORD"
+                  mysqldump --no-tablespaces -h {{ include "archer-database.fullname" . }} -u {{ .Values.auth.username | quote }} {{ .Values.auth.database | quote }} > "$${OUT}"
+                  unset MYSQL_PWD
+                  echo "Backup completed: $${OUT}"
+              env:
+                - name: MYSQL_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "archer-database.fullname" . }}
+                      key: mysql-password
+              volumeMounts:
+                - name: backup
+                  mountPath: /backups
+          volumes:
+            - name: backup
+              persistentVolumeClaim:
+                claimName: {{ include "archer-database.fullname" . }}-backup
+{{- end }}
