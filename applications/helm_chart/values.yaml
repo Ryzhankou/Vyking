@@ -56,8 +56,9 @@ backend:
   dbSecretKey: "mysql-password"   # Bitnami MySQL secret key for auth.password
 
 # Ingress - two ingresses (same host, different paths) for cross-namespace routing
+# Set enabled: true to expose frontend and backend via ingress
 ingress:
-  enabled: true
+  enabled: false
   className: "nginx"
   host: "game.example.com"
   annotations:

@@ -20,6 +20,14 @@ resource "argocd_project" "myapp" {
       server    = "https://kubernetes.default.svc"
       namespace = "myapp"
     }
+    destination {
+      server    = "https://kubernetes.default.svc"
+      namespace = "game-frontend"
+    }
+    destination {
+      server    = "https://kubernetes.default.svc"
+      namespace = "game-backend"
+    }
 
     cluster_resource_whitelist {
       group = "*"
@@ -56,6 +64,7 @@ resource "argocd_application" "myapp" {
 
       helm {
         release_name = "myapp"
+        value_files   = ["values-kind.yaml"]
       }
     }
 
