@@ -54,7 +54,7 @@ helm-db-clean:
 # Reinstall DB (clean + install). Use when migrating or fixing immutable StatefulSet errors.
 helm-db-reinstall: helm-db-clean helm-db-install
 
-helm-db-install: # Deploy MySQL (Bitnami) + backup CronJob via Helm (same chart as Argo CD infrastructure app)
+helm-db-install: # Deploy MySQL + backup CronJob via Helm (same chart as Argo CD infrastructure app)
 	@kubectl create namespace game-backend --dry-run=client -o yaml | kubectl apply -f -
 	@helm dependency update infrastructure/mysql-chart
 	@helm upgrade --install infrastructure infrastructure/mysql-chart -n game-backend --wait --timeout 5m

@@ -40,11 +40,8 @@ spec:
                     --triggers \
                     --databases "${DB_NAME}" \
                   | gzip > "${BACKUP_FILE}"
-                  echo "[$(date)] Backup completed: ${BACKUP_FILE} ($(du -sh ${BACKUP_FILE} | cut -f1))"
-
-                  # Retention: remove backups older than 7 days
+                  echo "[$(date)] Backup completed: ${BACKUP_FILE}"
                   find /backups -name "gamedb_*.sql.gz" -mtime +7 -delete
-                  echo "[$(date)] Old backups cleaned up."
               env:
                 - name: DB_HOST
                   value: "archer-db-mysql"

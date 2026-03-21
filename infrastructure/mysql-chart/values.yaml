@@ -1,12 +1,12 @@
-# Infrastructure MySQL chart - Bitnami MySQL + backup CronJob
-# Service: archer-db-mysql, Secret: archer-db (matches applications/helm_chart backend config)
-# Note: bitnami/mysql deprecated on Docker Hub; using bitnamilegacy/mysql for migration
+# Infrastructure MySQL - Bitnami MySQL + backup CronJob
+# Service: archer-db-mysql, Secret: archer-db
 
 archer-db:
   image:
     registry: docker.io
     repository: bitnamilegacy/mysql
     tag: "8.0"
+
   auth:
     rootPassword: "rootpassword"   # Change in production!
     database: "gamedb"
@@ -15,12 +15,11 @@ archer-db:
     existingSecret: ""
 
   primary:
-    # Override probes: bitnamilegacy/mysql uses different socket path; use TCP instead
-    # MySQL with init scripts can take 1-2 min on first start
+    # MySQL starts in background - needs 2+ min before port 3306 is ready
     customStartupProbe:
       tcpSocket:
         port: 3306
-      initialDelaySeconds: 60
+      initialDelaySeconds: 120
       periodSeconds: 10
       timeoutSeconds: 5
       failureThreshold: 60
@@ -33,7 +32,7 @@ archer-db:
     customReadinessProbe:
       tcpSocket:
         port: 3306
-      initialDelaySeconds: 10
+      initialDelaySeconds: 15
       periodSeconds: 10
       timeoutSeconds: 5
     persistence:
@@ -52,7 +51,6 @@ archer-db:
       bind-address=0.0.0.0
       default_authentication_plugin=mysql_native_password
       skip-name-resolve
-      explicit_defaults_for_timestamp
       character-set-server=utf8mb4
       collation-server=utf8mb4_unicode_ci
     initdbScriptsConfigMap: "archer-db-mysql-init"
@@ -70,7 +68,7 @@ archer-db:
   volumePermissions:
     enabled: false
 
-# Backup CronJob - runs every 5 minutes (uses official mysql for mysqldump)
+# Backup CronJob
 backup:
   enabled: true
   schedule: "*/5 * * * *"

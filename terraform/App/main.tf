@@ -9,10 +9,6 @@ moved {
   to   = argocd_repository.apps_repo
 }
 moved {
-  from = module.App.argocd_repository.bitnami
-  to   = module.Infrastructure.argocd_repository.bitnami
-}
-moved {
   from = module.App.argocd_project.infrastructure
   to   = module.Infrastructure.argocd_project.infrastructure
 }

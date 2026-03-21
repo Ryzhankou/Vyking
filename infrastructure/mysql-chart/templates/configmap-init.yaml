@@ -3,10 +3,7 @@ kind: ConfigMap
 metadata:
   name: archer-db-mysql-init
   labels:
-    app.kubernetes.io/name: {{ include "infrastructure-mysql.name" . }}
-  annotations:
-    helm.sh/hook: pre-install
-    helm.sh/hook-weight: "-5"
+    app.kubernetes.io/name: infrastructure-mysql
 data:
   01-init.sql: |
     CREATE DATABASE IF NOT EXISTS gamedb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

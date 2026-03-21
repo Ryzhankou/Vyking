@@ -51,7 +51,7 @@ backend:
     DB_NAME: "gamedb"
     DB_USER: "gameuser"
     PORT: "8080"
-  # Must match Bitnami MySQL secret: <release-name> (archer-db from infrastructure chart)
+  # Must match Bitnami MySQL secret: <release-name> (archer-db from subchart alias)
   dbSecretName: "archer-db"
   dbSecretKey: "mysql-password"   # Bitnami MySQL secret key for auth.password
 
