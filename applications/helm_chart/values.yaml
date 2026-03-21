@@ -51,8 +51,8 @@ backend:
     DB_NAME: "gamedb"
     DB_USER: "gameuser"
     PORT: "8080"
-  # Must match database chart release: <release-name>-mysql
-  dbSecretName: "archer-db-mysql"
+  # Must match Bitnami MySQL secret: <release-name> (archer-db from infrastructure chart)
+  dbSecretName: "archer-db"
   dbSecretKey: "mysql-password"   # Bitnami MySQL secret key for auth.password
 
 # Ingress - two ingresses (same host, different paths) for cross-namespace routing

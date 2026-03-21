@@ -1,0 +1,51 @@
+# Infrastructure MySQL chart - Bitnami MySQL + backup CronJob
+# Service: archer-db-mysql, Secret: archer-db (matches applications/helm_chart backend config)
+
+archer-db:
+  auth:
+    rootPassword: "rootpassword"   # Change in production!
+    database: "gamedb"
+    username: "gameuser"
+    password: "gamepass"           # Change in production!
+    existingSecret: ""
+
+  primary:
+    persistence:
+      enabled: true
+      storageClass: ""
+      size: 8Gi
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+    configuration: |-
+      [mysqld]
+      default_authentication_plugin=mysql_native_password
+      skip-name-resolve
+      explicit_defaults_for_timestamp
+      character-set-server=utf8mb4
+      collation-server=utf8mb4_unicode_ci
+    initdbScriptsConfigMap: "archer-db-mysql-init"
+
+  secondary:
+    replicaCount: 0
+
+  metrics:
+    enabled: false
+
+  service:
+    type: ClusterIP
+    port: 3306
+
+  volumePermissions:
+    enabled: false
+
+# Backup CronJob - runs every 5 minutes
+backup:
+  enabled: true
+  schedule: "*/5 * * * *"
+  pvcSize: 5Gi
+  image: bitnami/mysql:8.0

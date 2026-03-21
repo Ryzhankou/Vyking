@@ -1,5 +1,8 @@
 # Terraform
 .terraform/
+
+# Helm chart dependencies (fetched by Argo CD from configured repos)
+infrastructure/mysql-chart/charts/
 *.tfstate
 *.tfstate.*
 *.tfvars

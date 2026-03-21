@@ -1,0 +1,11 @@
+apiVersion: v2
+name: infrastructure-mysql
+description: MySQL database and backup CronJob for Archer's Challenge (Bitnami MySQL + backup)
+type: application
+version: 0.1.0
+appVersion: "8.0"
+dependencies:
+  - name: mysql
+    alias: archer-db
+    version: "14.0.3"
+    repository: "https://charts.bitnami.com/bitnami"

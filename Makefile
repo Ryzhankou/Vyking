@@ -75,9 +75,10 @@ helm-app-install-kind:
 
 helm-install: helm-db-install helm-app-install
 
-# ArgoCD Application for app (requires: k8s-argocd-install, helm-db-install)
+# ArgoCD Applications: infrastructure (MySQL + backup) + applications (frontend/backend)
 # Use: make k8s-app-install ARGOCD_ADMIN_PASSWORD=<password>
-k8s-app-install: # Deploy ArgoCD Application for app helm chart from public repo
+# For Kind with local images: make kind-build-load first
+k8s-app-install: # Deploy ArgoCD Applications (infrastructure + app) from Git
 	@kubectl create namespace game-frontend --dry-run=client -o yaml | kubectl apply -f -
 	@kubectl create namespace game-backend --dry-run=client -o yaml | kubectl apply -f -
 	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \

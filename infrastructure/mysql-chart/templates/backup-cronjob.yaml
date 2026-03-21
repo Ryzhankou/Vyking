@@ -1,32 +1,13 @@
----
-# PersistentVolumeClaim for storing MySQL backups
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: mysql-backup-pvc
-  namespace: game
-  labels:
-    app: mysql-backup
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 5Gi
-  # storageClassName: ""   # Uncomment and set if needed
-
----
-# CronJob that runs mysqldump every 5 minutes (for demonstration)
+{{- if .Values.backup.enabled }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: mysql-backup
-  namespace: game
   labels:
     app: mysql-backup
 spec:
-  schedule: "*/5 * * * *"        # Every 5 minutes (demo); use "0 2 * * *" for nightly in prod
-  concurrencyPolicy: Forbid      # Don't run a new job if previous one is still running
+  schedule: {{ .Values.backup.schedule | quote }}
+  concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
   jobTemplate:
@@ -40,7 +21,7 @@ spec:
           restartPolicy: OnFailure
           containers:
             - name: mysql-backup
-              image: bitnami/mysql:8.0          # Contains mysqldump client
+              image: {{ .Values.backup.image | quote }}
               command:
                 - /bin/bash
                 - -c
@@ -66,7 +47,7 @@ spec:
                   echo "[$(date)] Old backups cleaned up."
               env:
                 - name: DB_HOST
-                  value: "mysql"              # Service name of MySQL in the cluster
+                  value: "archer-db-mysql"
                 - name: DB_PORT
                   value: "3306"
                 - name: DB_NAME
@@ -76,8 +57,8 @@ spec:
                 - name: DB_PASSWORD
                   valueFrom:
                     secretKeyRef:
-                      name: mysql             # Bitnami MySQL creates this secret automatically
-                      key: mysql-password     # Key in the Bitnami-generated secret
+                      name: archer-db
+                      key: mysql-password
               volumeMounts:
                 - name: backup-storage
                   mountPath: /backups
@@ -92,3 +73,4 @@ spec:
             - name: backup-storage
               persistentVolumeClaim:
                 claimName: mysql-backup-pvc
+{{- end }}
