@@ -4,6 +4,6 @@ provider "argocd" {
   username = "admin"
   password = var.argocd_admin_password
 
-  config_path = "~/.kube/config"
-  context     = "kind-dev-global-cluster-0"
+  config_path = var.kube_config_path
+  context     = var.cluster_context
 }

@@ -7,8 +7,11 @@ resource "argocd_repository" "apps_repo" {
 module "Infrastructure" {
   source = "./modules/Infrastructure"
 
-  repo_url        = argocd_repository.apps_repo.repo
-  target_revision = var.target_revision
+  repo_url              = argocd_repository.apps_repo.repo
+  target_revision       = var.target_revision
+  helm_chart_path       = var.infra_helm_chart_path
+  destination_namespace = var.infra_destination_namespace
+  extra_helm_repos      = var.infra_extra_helm_repos
 }
 
 # App module: Frontend + Backend (deploys after infrastructure)

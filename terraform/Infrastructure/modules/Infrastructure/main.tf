@@ -1,27 +1,33 @@
-# Infrastructure module: MySQL (Bitnami) + backup CronJob
+# Infrastructure module: MySQL + backup CronJob
 
-resource "argocd_repository" "bitnami" {
-  repo = "https://charts.bitnami.com/bitnami"
-  type = "helm"
+resource "argocd_repository" "extra" {
+  for_each = { for i, r in var.extra_helm_repos : r.repo => r }
+
+  repo = each.value.repo
+  type = each.value.type
+}
+
+locals {
+  infrastructure_source_repos = concat(
+    [var.repo_url],
+    [for r in var.extra_helm_repos : r.repo]
+  )
 }
 
 resource "argocd_project" "infrastructure" {
   metadata {
-    name      = "infrastructure"
+    name      = var.project_name
     namespace = "argocd"
   }
 
   spec {
-    description = "Project for infrastructure (MySQL, backup CronJob)"
+    description = "Project for ${var.project_name} (MySQL, backup CronJob)"
 
-    source_repos = [
-      var.repo_url,
-      argocd_repository.bitnami.repo
-    ]
+    source_repos = local.infrastructure_source_repos
 
     destination {
-      server    = "https://kubernetes.default.svc"
-      namespace = "game-backend"
+      server    = var.destination_server
+      namespace = var.destination_namespace
     }
 
     cluster_resource_whitelist {
@@ -34,11 +40,13 @@ resource "argocd_project" "infrastructure" {
       kind  = "*"
     }
   }
+
+  depends_on = [argocd_repository.extra]
 }
 
 resource "argocd_application" "infrastructure" {
   metadata {
-    name      = "infrastructure"
+    name      = var.application_name
     namespace = "argocd"
   }
 
@@ -48,17 +56,17 @@ resource "argocd_application" "infrastructure" {
     project = argocd_project.infrastructure.metadata[0].name
 
     destination {
-      server    = "https://kubernetes.default.svc"
-      namespace = "game-backend"
+      server    = var.destination_server
+      namespace = var.destination_namespace
     }
 
     source {
       repo_url        = var.repo_url
-      path            = "infrastructure/mysql-chart"
+      path            = var.helm_chart_path
       target_revision = var.target_revision
 
       helm {
-        release_name = "infrastructure"
+        release_name = var.helm_release_name
       }
     }
 
@@ -73,7 +81,6 @@ resource "argocd_application" "infrastructure" {
   }
 
   depends_on = [
-    argocd_repository.bitnami,
     argocd_project.infrastructure
   ]
 }
