@@ -57,6 +57,11 @@ app-install: # Deploy ArgoCD Applications (infrastructure + app) from Git
 	TF_VAR_target_revision="$(TARGET_REVISION)" \
 	terraform -chdir=terraform/App apply -auto-approve
 
+app-port-forward:
+	@kubectl config use-context kind-dev-global-cluster-0
+	@kubectl port-forward svc/archer-game-frontend -n game-frontend 8081:80 > /dev/null 2>&1 &
+# 	@kubectl port-forward svc/game-backend -n game-backend 8082:80 > /dev/null 2>&1 &
+
 app-uninstall: # Remove ArgoCD Applications
 	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
 	TF_VAR_target_revision="$(TARGET_REVISION)" \
@@ -64,6 +69,19 @@ app-uninstall: # Remove ArgoCD Applications
 	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
 	TF_VAR_target_revision="$(TARGET_REVISION)" \
 	terraform -chdir=terraform/App destroy -auto-approve
+
+up:
+	@$(MAKE) k8s-create
+	@$(MAKE) argocd-install
+	@$(MAKE) argocd-port-forward
+	@$(MAKE) kind-build-load
+	@$(MAKE) app-install
+	@$(MAKE) app-port-forward
+
+down:
+# 	@$(MAKE) app-uninstall
+# 	@$(MAKE) argocd-uninstall
+	@$(MAKE) k8s-delete
 
 
 
