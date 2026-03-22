@@ -1,6 +1,0 @@
-apiVersion: v2
-name: archer-database
-description: MySQL database for Archer's Challenge game
-type: application
-version: 0.2.0
-appVersion: "8.0"
