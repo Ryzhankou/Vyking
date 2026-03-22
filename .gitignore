@@ -17,3 +17,6 @@ infrastructure/mysql-chart/charts/
 # OS
 .DS_Store
 Thumbs.db
+
+# Logs
+.logs/
