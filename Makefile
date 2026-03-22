@@ -44,6 +44,18 @@ kind-build-load:
 # For Kind with local images: make kind-build-load first
 # Uses current git branch by default (override with TARGET_REVISION=main)
 TARGET_REVISION ?= $(shell git branch --show-current 2>/dev/null || echo main)
+infrastructure-install: # Deploy ArgoCD Applications (infrastructure + app) from Git
+	@kubectl create namespace game-backend --dry-run=client -o yaml | kubectl apply -f -
+	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
+	TF_VAR_target_revision="$(TARGET_REVISION)" \
+	terraform -chdir=terraform/infrastructure init
+	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
+	TF_VAR_target_revision="$(TARGET_REVISION)" \
+	terraform -chdir=terraform/infrastructure plan
+	@TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
+	TF_VAR_target_revision="$(TARGET_REVISION)" \
+	terraform -chdir=terraform/infrastructure apply -auto-approve
+
 app-install: # Deploy ArgoCD Applications (infrastructure + app) from Git
 	@kubectl create namespace game-frontend --dry-run=client -o yaml | kubectl apply -f -
 	@kubectl create namespace game-backend --dry-run=client -o yaml | kubectl apply -f -
@@ -75,6 +87,7 @@ up:
 	@$(MAKE) argocd-install
 	@$(MAKE) argocd-port-forward
 	@$(MAKE) kind-build-load
+	@$(MAKE) infrastructure-install
 	@$(MAKE) app-install
 	@$(MAKE) app-port-forward
 
