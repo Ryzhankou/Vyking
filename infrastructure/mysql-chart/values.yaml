@@ -1,0 +1,83 @@
+# Infrastructure MySQL - Bitnami MySQL + backup CronJob
+# Service: <release>-archer-db, Secret: <release>-archer-db (e.g. infrastructure-archer-db)
+
+archer-db:
+  image:
+    registry: docker.io
+    repository: bitnamilegacy/mysql
+    tag: "9.4.0-debian-12-r1"
+
+  # Root-level: Bitnami mounts these
+  initdbScriptsConfigMap: "archer-db-mysql-init"
+  # Runs every startup - ensures gameuser@'%' for remote connections (Bitnami creates gameuser@'localhost' only)
+  # startdbScriptsConfigMap: "archer-db-mysql-startdb"
+
+  auth:
+    rootPassword: "rootpassword"   # Change in production!
+    database: "gamedb"
+    username: "gameuser"
+    password: "gamepass"           # Change in production!
+    existingSecret: ""
+
+  primary:
+    # Bitnami startup script overrides bind-address; must use extraFlags for remote connections
+    # extraFlags: "--bind-address=0.0.0.0"
+    # MySQL starts in background - needs 2+ min before port 3306 is ready
+    # customStartupProbe:
+    #   tcpSocket:
+    #     port: 3306
+    #   initialDelaySeconds: 120
+    #   periodSeconds: 10
+    #   timeoutSeconds: 5
+    #   failureThreshold: 60
+    # customLivenessProbe:
+    #   tcpSocket:
+    #     port: 3306
+    #   initialDelaySeconds: 30
+    #   periodSeconds: 10
+    #   timeoutSeconds: 5
+    # customReadinessProbe:
+    #   tcpSocket:
+    #     port: 3306
+    #   initialDelaySeconds: 15
+    #   periodSeconds: 10
+    #   timeoutSeconds: 5
+    persistence:
+      enabled: true
+      storageClass: ""
+      size: 8Gi
+    resources:
+      requests:
+        cpu: "250m"
+        memory: "256Mi"
+      limits:
+        cpu: "500m"
+        memory: "512Mi"
+    # configuration: |-
+    #   [mysqld]
+    #   bind-address=0.0.0.0
+    #   open_files_limit=65535
+    #   default_authentication_plugin=mysql_native_password
+    #   skip-name-resolve
+    #   character-set-server=utf8mb4
+    #   collation-server=utf8mb4_unicode_ci
+
+  secondary:
+    replicaCount: 0
+
+  metrics:
+    enabled: false
+
+  service:
+    type: ClusterIP
+    port: 3306
+
+  volumePermissions:
+    enabled: false
+
+# Backup CronJob
+backup:
+  enabled: true
+  schedule: "*/5 * * * *"
+  pvcSize: 5Gi
+  image: mysql:8.0

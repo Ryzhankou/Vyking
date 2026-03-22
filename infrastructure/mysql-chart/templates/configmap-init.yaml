@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: archer-db-mysql-init
+data:
+  01-init.sh: |
+    ROOT_PASSWORD="$(cat /opt/bitnami/mysql/secrets/mysql-root-password)"
+
+    mysql --socket=/opt/bitnami/mysql/tmp/mysql.sock -uroot -p"${ROOT_PASSWORD}" <<'EOF'
+    USE gamedb;
+
+    CREATE TABLE IF NOT EXISTS leaderboard (
+        id BIGINT NOT NULL AUTO_INCREMENT,
+        player_name VARCHAR(64) NOT NULL,
+        score INT NOT NULL DEFAULT 0,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id),
+        INDEX idx_score (score DESC),
+        INDEX idx_created_at (created_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+    INSERT IGNORE INTO leaderboard (player_name, score) VALUES
+        ('Robin Hood', 480),
+        ('Katniss',    420),
+        ('Legolas',    390),
+        ('Merida',     350),
+        ('Arrow',      300);
+    EOF
