@@ -28,7 +28,6 @@ variable "cluster_context" {
   description = "Kubernetes context. Override for different environments."
 }
 
-# Infrastructure module overrides (optional)
 variable "infra_helm_chart_path" {
   type        = string
   default     = "infrastructure/mysql-chart"
