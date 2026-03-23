@@ -50,7 +50,18 @@ resource "argocd_application" "infrastructure" {
     namespace = "argocd"
   }
 
-  wait = true
+  # Do not wait for infrastructure health — the CronJob's backup Jobs would
+  # block Terraform for minutes on every apply. MySQL readiness is verified
+  # indirectly: the App module's wait=true + backend init container ensure
+  # the stack is only considered healthy once MySQL is actually reachable.
+  wait = false
+
+  # Do not cascade-delete Kubernetes resources on destroy. MySQL StatefulSet
+  # and PVC deletion is slow and causes a race condition where Terraform tries
+  # to delete the ArgoCD project before the application is fully removed.
+  # Data is preserved on redeploy; the Kind cluster is always deleted by
+  # `make k8s-delete` anyway when running `make down`.
+  cascade = false
 
   spec {
     project = argocd_project.infrastructure.metadata[0].name

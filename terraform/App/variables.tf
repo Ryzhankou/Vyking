@@ -70,3 +70,30 @@ variable "app_helm_value_files" {
   default     = ["values-kind.yaml"]
   description = "Helm values files. Use [] for default values only."
 }
+
+# Infrastructure module overrides (optional)
+variable "infra_helm_chart_path" {
+  type        = string
+  default     = "infrastructure/mysql-chart"
+  description = "Path to infrastructure Helm chart in the Git repository."
+}
+
+variable "infra_destination_namespace" {
+  type        = string
+  default     = "game-backend"
+  description = "Namespace for infrastructure deployment."
+}
+
+variable "infra_extra_helm_repos" {
+  type = list(object({
+    repo = string
+    type = string
+  }))
+  default = [
+    {
+      repo = "https://charts.bitnami.com/bitnami"
+      type = "helm"
+    }
+  ]
+  description = "Extra Helm repos for infrastructure (e.g. Bitnami). Use [] for charts from Git only."
+}
