@@ -191,6 +191,7 @@ header{width:100%;max-width:960px;display:flex;align-items:center;justify-conten
 //  CONFIG
 // ═══════════════════════════════════════════════════════
 const API = window.BACKEND_URL || '';
+console.log('[Archer] API base:', API || '(same-origin)');
 const CANVAS_W = 960, CANVAS_H = 480;
 const GRAVITY = 520;          // px/s²
 const MAX_ROUNDS = 5;
@@ -550,8 +551,10 @@ async function saveScore() {
 
 async function loadLeaderboard() {
   const tbody = document.getElementById('lbBody');
+  const url = API + '/api/leaderboard';
+  console.log('[Archer] fetch leaderboard:', url);
   try {
-    const res = await fetch(API + '/api/leaderboard');
+    const res = await fetch(url);
     if (!res.ok) {
       throw new Error('Leaderboard request failed: ' + res.status);
     }
@@ -566,8 +569,9 @@ async function loadLeaderboard() {
                   e.rank === 3 ? '<span class="medal-3">🥉</span>' : e.rank;
       return `<tr><td>${med}</td><td>${esc(e.player_name)}</td><td><strong>${e.score}</strong></td><td style="color:#444;font-size:.75rem">${e.created_at.split(' ')[0]}</td></tr>`;
     }).join('');
+    console.log('[Archer] leaderboard loaded:', data.length, 'entries');
   } catch (e) {
-    console.error('Leaderboard load error:', e);
+    console.error('[Archer] Leaderboard load error:', e);
     tbody.innerHTML = '<tr><td colspan="4" style="color:#e74c3c;text-align:center;padding:12px">Failed to load leaderboard. Check backend logs.</td></tr>';
   }
 }

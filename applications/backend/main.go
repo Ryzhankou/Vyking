@@ -62,7 +62,7 @@ func main() {
 	r.HandleFunc("/api/leaderboard", leaderboardHandler).Methods("GET", "OPTIONS")
 
 	port := getEnv("PORT", "8080")
-	log.Printf("Archer game server starting on port %s", port)
+	log.Printf("Archer game server starting on port %s, DB=%s:%s", port, getEnv("DB_HOST", "?"), getEnv("DB_PORT", "?"))
 	log.Fatal(http.ListenAndServe(":"+port, r))
 }
 
