@@ -88,8 +88,18 @@ endef
 
 k8s-create: | $(LOG_DIR)
 	$(call step,1/7,Creating Kind cluster '$(KIND_CLUSTER)')
-	$(call run_step,creating Kind cluster,kind create cluster --name $(KIND_CLUSTER) --config k8s/kind/kind-dev.yaml,$(LOG_DIR)/kind-create.log)
-	$(call ok,Cluster created: kind-$(KIND_CLUSTER))
+	@if kind get clusters 2>/dev/null | grep -qx "$(KIND_CLUSTER)"; then \
+		printf "   -> Cluster 'kind-$(KIND_CLUSTER)' already exists, skipping creation\n"; \
+		kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1; \
+	else \
+		printf "   -> creating Kind cluster\n"; \
+		kind create cluster --name $(KIND_CLUSTER) --config k8s/kind/kind-dev.yaml > $(LOG_DIR)/kind-create.log 2>&1 || { \
+			printf "✗ Failed at: creating Kind cluster\n"; \
+			printf "  See log: $(LOG_DIR)/kind-create.log\n"; \
+			exit 1; \
+		}; \
+	fi
+	$(call ok,Cluster ready: kind-$(KIND_CLUSTER))
 
 k8s-delete: | $(LOG_DIR)
 	$(call step,4/4,Deleting Kind cluster '$(KIND_CLUSTER)')
