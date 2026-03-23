@@ -46,9 +46,9 @@ You should see 1 control-plane and 3 worker nodes.
 
 ```bash
 export ARGOCD_ADMIN_PASSWORD="YourSecurePassword"
-export ARGOCD_ADMIN_PASSWORD_MTIME=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+export ARGOCD_ADMIN_PASSWORD_MTIME=$(date -u -d '1 minute ago' +%Y-%m-%dT%H:%M:%SZ)
 
-make k8s-argocd-install
+make argocd-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
 ```
 
 ### 4. Deploy Argo CD Applications (Infrastructure + App)
@@ -59,20 +59,22 @@ This creates two Argo CD Applications that sync from this repository:
 - **myapp**: Frontend and backend
 
 ```bash
-make k8s-app-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD"
+make infrastructure-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
+make app-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
 ```
 
 For Kind with locally built images:
 
 ```bash
 make kind-build-load
-make k8s-app-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD"
+make infrastructure-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
+make app-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
 ```
 
 ### 5. Access Argo CD UI
 
 ```bash
-make k8s-argocd-port-forward
+make argocd-port-forward
 ```
 
 Open https://localhost:8080 (accept the self-signed certificate).
@@ -80,7 +82,7 @@ Open https://localhost:8080 (accept the self-signed certificate).
 Get the admin password:
 
 ```bash
-make k8s-argocd-password
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
 ```
 
 Login: `admin` / `<password>`
@@ -93,10 +95,10 @@ Check that the CronJob runs and creates backups:
 
 ```bash
 # List CronJob pods
-kubectl get pods -n game-backend -l app=mysql-backup
+kubectl get pods -n game-backend -l app.kubernetes.io/component=backup
 
 # Exec into a backup pod to verify backup files
-kubectl exec -n game-backend -it $(kubectl get pods -n game-backend -l app=mysql-backup -o jsonpath='{.items[0].metadata.name}') -- ls -la /backups
+kubectl exec -n game-backend -it $(kubectl get pods -n game-backend -l app.kubernetes.io/component=backup -o jsonpath='{.items[0].metadata.name}') -- ls -la /backups
 ```
 
 ### 7. Access the Application
@@ -114,10 +116,11 @@ Open http://localhost:8081. The frontend proxies /api/ to the backend; data pers
 
 ```bash
 # Remove Argo CD Applications
-make k8s-app-uninstall ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD"
+make app-uninstall ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
+make infrastructure-uninstall ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
 
 # Uninstall Argo CD
-make k8s-argocd-uninstall
+make argocd-uninstall ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
 
 # Delete the cluster
 make k8s-delete
@@ -126,10 +129,9 @@ make k8s-delete
 ## Deployment Flow
 
 1. **k8s-create** — Creates Kind cluster (1 control-plane + 3 workers)
-2. **k8s-argocd-install** — Installs Argo CD via Terraform Helm provider
-3. **k8s-app-install** — Creates Argo CD Applications:
-   - **infrastructure** → `infrastructure/mysql-chart` (Bitnami MySQL + backup CronJob)
-   - **myapp** → `applications/helm_chart` (frontend + backend)
+2. **argocd-install** — Installs Argo CD via Terraform Helm provider
+3. **infrastructure-install** — Deploys infrastructure Argo CD Application (MySQL + backup CronJob)
+4. **app-install** — Deploys applications Argo CD Application (frontend + backend)
 
 Argo CD syncs both applications from the Git repository.
 
@@ -154,19 +156,19 @@ make mysql-restore BACKUP_FILE=gamedb_20250321_120000.sql.gz  # From specific fi
 |--------|-------------|
 | `k8s-create` | Create Kind cluster |
 | `k8s-delete` | Delete Kind cluster |
-| `k8s-argocd-install` | Install Argo CD via Terraform |
-| `k8s-argocd-port-forward` | Port-forward Argo CD UI to 8080 |
-| `k8s-argocd-password` | Show Argo CD admin password |
-| `k8s-argocd-uninstall` | Uninstall Argo CD |
-| `k8s-app-install` | Deploy Argo CD Applications |
-| `k8s-app-uninstall` | Remove Argo CD Applications |
+| `argocd-install` | Install Argo CD via Terraform |
+| `argocd-port-forward` | Port-forward Argo CD UI to 8080 |
+| `argocd-uninstall` | Uninstall Argo CD |
+| `infrastructure-install` | Deploy infrastructure Argo CD Application (MySQL + backup) |
+| `infrastructure-uninstall` | Remove infrastructure application |
+| `app-install` | Deploy applications Argo CD Application (frontend + backend) |
+| `app-port-forward` | Port-forward frontend to 8081 |
+| `app-uninstall` | Remove applications |
 | `kind-build-load` | Build and load images into Kind |
 | `mysql-list-backups` | List available MySQL backup files |
 | `mysql-restore` | Restore MySQL from backup (optionally with `BACKUP_FILE=...`) |
-| `helm-db-install` | Install MySQL via Helm (manual, non-GitOps) |
-| `helm-app-install` | Install app via Helm (manual, non-GitOps) |
-| `helm-app-install-kind` | Install app with local images (manual) |
-| `k8s-fix-inotify` | Apply inotify limits workaround for "too many open files" |
+| `up` | Full deployment: cluster + Argo CD + infrastructure + app |
+| `down` | Full cleanup: app + infrastructure + Argo CD + cluster |
 
 ## Troubleshooting
 
@@ -203,7 +205,7 @@ make mysql-restore BACKUP_FILE=gamedb_20250321_120000.sql.gz  # From specific fi
 Kind nodes share the host kernel; inotify limits may be too low for MySQL and other workloads. If you see `unable to create fsnotify watcher: too many open files` or similar:
 
 1. **New clusters**: `make k8s-create` applies the fix automatically.
-2. **Existing clusters**: Run `make k8s-fix-inotify` to raise `fs.inotify.max_user_watches` and `fs.inotify.max_user_instances`.
+2. **Existing clusters**: Raise `fs.inotify.max_user_watches` and `fs.inotify.max_user_instances` on the host (e.g. via sysctl or Docker/Kind node config).
 
 ## License
 
