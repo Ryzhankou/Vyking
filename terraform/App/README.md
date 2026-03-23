@@ -11,38 +11,40 @@ Two modules create Argo CD Applications that sync from [Ryzhankou/Vyking](https:
 
 ## Branch / Target Revision
 
-By default, `make k8s-app-install` uses the **current git branch** for Argo CD sync. Override:
+By default, `make app-install` uses the **current git branch** for Argo CD sync.
+The branch must be pushed to `origin` before deploying. Override:
 
 ```bash
-make k8s-app-install ARGOCD_ADMIN_PASSWORD=<pwd> TARGET_REVISION=main
+make app-install ARGOCD_ADMIN_PASSWORD=<pwd> TARGET_REVISION=main
 ```
 
 ## Prerequisites
 
-- Argo CD installed (`make k8s-argocd-install`)
-- Namespaces `game-frontend` and `game-backend` (created by Makefile)
+- Argo CD installed (`make argocd-install`)
+- Namespaces `game-frontend` and `game-backend` (created automatically by Makefile)
 
 ## Usage
 
 ```bash
-make k8s-app-install ARGOCD_ADMIN_PASSWORD=<password>
+make app-install ARGOCD_ADMIN_PASSWORD=<password>
 ```
 
 For Kind with local images:
 
 ```bash
 make kind-build-load
-make k8s-app-install ARGOCD_ADMIN_PASSWORD=<password>
+make app-install ARGOCD_ADMIN_PASSWORD=<password>
 ```
 
 ## Uninstall
 
 ```bash
-make k8s-app-uninstall ARGOCD_ADMIN_PASSWORD=<password>
+make app-uninstall ARGOCD_ADMIN_PASSWORD=<password>
 ```
 
 ## Deployment Order
 
 1. `make k8s-create` — create Kind cluster
-2. `make k8s-argocd-install` — install Argo CD
-3. `make k8s-app-install` — deploy both Argo CD Applications (infrastructure first, then app)
+2. `make argocd-install` — install Argo CD
+3. `make kind-build-load` — build and load local images
+4. `make app-install` — deploy both Argo CD Applications (infrastructure first, then app)
