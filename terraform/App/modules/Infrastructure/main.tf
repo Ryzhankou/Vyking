@@ -56,6 +56,13 @@ resource "argocd_application" "infrastructure" {
   # the stack is only considered healthy once MySQL is actually reachable.
   wait = false
 
+  # Do not cascade-delete Kubernetes resources on destroy. MySQL StatefulSet
+  # and PVC deletion is slow and causes a race condition where Terraform tries
+  # to delete the ArgoCD project before the application is fully removed.
+  # Data is preserved on redeploy; the Kind cluster is always deleted by
+  # `make k8s-delete` anyway when running `make down`.
+  cascade = false
+
   spec {
     project = argocd_project.infrastructure.metadata[0].name
 
