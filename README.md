@@ -9,7 +9,7 @@ Kubernetes deployment with GitOps (Argo CD), Terraform, and Helm. Includes a mul
 | `applications/` | Custom Helm chart for frontend/backend, Dockerfiles |
 | `infrastructure/` | MySQL (Bitnami) + backup CronJob Helm chart |
 | `argocd/apps/` | App of Apps manifests (`infrastructure.yaml`, `myapp.yaml`) |
-| `terraform/` | Argo CD installation + root Argo CD Application (App of Apps) |
+| `terraform/` | Argo CD installation (`terraform/ArgoCD`) + root App of Apps (`terraform/App`) |
 | `k8s/` | Kind config, Argo CD values |
 
 ## Prerequisites
@@ -38,8 +38,21 @@ To tear everything down:
 make down ARGOCD_ADMIN_PASSWORD="YourSecurePassword"
 ```
 
-> **Note**: Argo CD syncs from the remote Git repository using the current branch.
-> Make sure your branch is pushed to `origin` before deploying.
+> **Note**: The root Argo CD Application (`apps`) syncs from the current git branch.
+> Child applications (`infrastructure`, `myapp`) always deploy Helm charts from `HEAD` (default branch).
+> Merge your changes to `main` before running `make up` to ensure child apps pick up the latest code.
+
+---
+
+## Deployment Flow (App of Apps)
+
+1. **k8s-create** — Kind cluster (1 control-plane + 3 workers)
+2. **argocd-install** — Argo CD via Terraform (Helm)
+3. **kind-build-load** — Build and load frontend/backend images into Kind
+4. **app-install** — Terraform creates root Application `apps` watching `argocd/apps/`
+5. Argo CD syncs `argocd/apps/` and creates child Applications:
+   - **infrastructure** (sync-wave 0) → MySQL + backup CronJob in `game-backend`
+   - **myapp** (sync-wave 1) → frontend + backend (uses `values-kind.yaml`)
 
 ---
 
@@ -122,7 +135,7 @@ You should see 1 control-plane and 3 worker nodes.
 make argocd-port-forward
 ```
 
-Open https://localhost:8080. Login: `admin` / `YourSecurePassword`.
+Open http://localhost:8080. Login: `admin` / `<ARGOCD_ADMIN_PASSWORD>`.
 
 You should see three applications: **apps** (root), **infrastructure**, and **myapp**, all synced and healthy.
 

@@ -1,6 +1,6 @@
 # Infrastructure MySQL Chart
 
-MySQL database (Bitnami) and backup CronJob for Archer's Challenge game.
+MySQL database (Bitnami) and backup CronJob for Archer's Challenge game. Deployed by Argo CD Application `infrastructure` (see `argocd/apps/infrastructure.yaml`).
 
 ## Architecture
 
@@ -15,6 +15,9 @@ MySQL database (Bitnami) and backup CronJob for Archer's Challenge game.
 
 ## Install
 
+**Via Argo CD** (recommended): Deployed automatically when `apps` root Application syncs.
+
+**Manual Helm**:
 ```bash
 helm dependency update infrastructure/mysql-chart
 helm install infrastructure infrastructure/mysql-chart -n game-backend --create-namespace

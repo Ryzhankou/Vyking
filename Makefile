@@ -127,7 +127,8 @@ kind-build-load: | $(LOG_DIR)
 	$(call step,4/6,Building and loading local images)
 	$(call run_step,building Docker images,docker compose build frontend game-backend,$(LOG_DIR)/docker-build.log)
 	@docker pull busybox:1.36 > /dev/null 2>&1 || true
-	$(call run_step,loading Docker images into Kind,kind load docker-image vyking-frontend:latest vyking-game-backend:latest busybox:1.36 --name $(KIND_CLUSTER),$(LOG_DIR)/kind-load.log)
+	@docker pull mysql:8.0 > /dev/null 2>&1 || true
+	$(call run_step,loading Docker images into Kind,kind load docker-image vyking-frontend:latest vyking-game-backend:latest busybox:1.36 mysql:8.0 --name $(KIND_CLUSTER),$(LOG_DIR)/kind-load.log)
 	$(call ok,Images loaded into Kind)
 
 app-install: | $(LOG_DIR)
