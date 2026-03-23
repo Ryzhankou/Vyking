@@ -92,6 +92,7 @@ make argocd-uninstall ARGOCD_ADMIN_PASSWORD="YourSecurePassword"
 |--------|-------------|
 | `kind-build-load` | Build local Docker images and load them into Kind nodes. |
 | `app-install` | Deploy the root Argo CD Application (App of Apps) via `terraform apply`. ArgoCD then creates child applications (`infrastructure` → `myapp`) in order. |
+| `app-wait` | Wait for frontend and backend deployments to become available. |
 | `app-port-forward` | Expose the frontend at http://localhost:8081. |
 | `app-uninstall` | Remove the root Argo CD Application (and child apps) via Terraform. |
 
@@ -166,13 +167,36 @@ kubectl run backup-check -n game-backend --restart=Never --rm -it \
 
 You should see timestamped `.sql.gz` files, e.g. `gamedb_20250321_120000.sql.gz`.
 
-### 4. Frontend application
+### 4. Frontend application and data persistence
 
 ```bash
 make app-port-forward
 ```
 
-Open http://localhost:8081. The frontend proxies `/api/` to the backend; scores persist in MySQL.
+Open http://localhost:8081. Play the game and submit a score — it will appear in the leaderboard.
+
+**Verify backend is reachable:**
+```bash
+curl http://localhost:8081/api/health
+# Expected: {"status":"ok"} or similar
+```
+
+**Verify data persists in MySQL:**
+```bash
+kubectl exec -n game-backend infrastructure-archer-db-0 -- \
+  mysql -ugameuser -pgamepass gamedb -e "SELECT * FROM leaderboard ORDER BY score DESC LIMIT 5;"
+```
+
+You should see the scores you just submitted. To confirm persistence across restarts:
+```bash
+# Restart backend pods
+kubectl rollout restart deployment/myapp-archer-game-backend -n game-backend
+kubectl rollout status deployment/myapp-archer-game-backend -n game-backend
+
+# Scores must still be present
+kubectl exec -n game-backend infrastructure-archer-db-0 -- \
+  mysql -ugameuser -pgamepass gamedb -e "SELECT COUNT(*) FROM leaderboard;"
+```
 
 ---
 
