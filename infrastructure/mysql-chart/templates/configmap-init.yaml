@@ -1,7 +1,9 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: archer-db-mysql-init
+  name: {{ .Values.initConfigMapName | default "archer-db-mysql-init" }}
+  labels:
+    {{- include "mysql-chart.labels" . | nindent 4 }}
 data:
   01-init.sh: |
     ROOT_PASSWORD="$(cat /opt/bitnami/mysql/secrets/mysql-root-password)"

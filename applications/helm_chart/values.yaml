@@ -44,15 +44,20 @@ backend:
       memory: "256Mi"
 
   config:
-    DB_HOST: "infrastructure-archer-db"
+    DB_HOST: "infrastructure-archer-db"  # Must match MySQL service name (e.g. <release>-archer-db)
     DB_PORT: "3306"
     DB_NAME: "gamedb"
     DB_USER: "gameuser"
     PORT: "8080"
 
+  # Prefer existingSecret: reference secret from infrastructure chart (e.g. infrastructure-archer-db)
   existingSecret:
     name: "infrastructure-archer-db"
     passwordKey: "mysql-password"
+
+  # Alternative: provide password inline (not recommended for production). Uncomment to use.
+  # secret:
+  #   DB_PASSWORD: "gamepass"
 
 ingress:
   enabled: false

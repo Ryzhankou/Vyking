@@ -1,0 +1,21 @@
+Archer's Challenge has been deployed.
+
+1. Get the application URL by running:
+
+  {{- if .Values.ingress.enabled }}
+
+  Frontend: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}/
+  Backend API: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}/api/
+
+  {{- else }}
+
+  kubectl --namespace {{ .Values.frontend.namespace }} port-forward svc/{{ include "game.fullname" . }}-frontend {{ .Values.frontend.service.port }}:{{ .Values.frontend.service.port }}
+  kubectl --namespace {{ .Values.backend.namespace }} port-forward svc/{{ include "game.fullname" . }}-backend {{ .Values.backend.service.port }}:{{ .Values.backend.service.port }}
+
+  Then visit http://127.0.0.1:{{ .Values.frontend.service.port }}
+
+  {{- end }}
+
+2. Verify backend connectivity to database:
+
+  kubectl --namespace {{ .Values.backend.namespace }} logs -l app.kubernetes.io/component=backend -f
