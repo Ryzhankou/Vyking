@@ -1,5 +1,8 @@
 KIND_CLUSTER ?= dev-global-cluster-0
 TARGET_REVISION ?= $(shell git branch --show-current 2>/dev/null || echo main)
+# Auto-generated: required by ArgoCD to recognize password changes on re-installs.
+# Override only if ArgoCD is already running and the password needs to be updated.
+ARGOCD_ADMIN_PASSWORD_MTIME ?= $(shell date -u -d '1 minute ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-1M +%Y-%m-%dT%H:%M:%SZ)
 LOG_DIR ?= .logs
 
 # MySQL backup/restore (must match infrastructure helm release)
@@ -39,11 +42,12 @@ help:
 	@printf "\nVariables:\n\n"
 	@printf "  %-24s %s\n" "KIND_CLUSTER" "Kind cluster name (default: $(KIND_CLUSTER))"
 	@printf "  %-24s %s\n" "TARGET_REVISION" "Git branch/revision for ArgoCD apps (default: $(TARGET_REVISION))"
-	@printf "  %-24s %s\n" "ARGOCD_ADMIN_PASSWORD" "Required for Terraform/Argo CD auth"
-	@printf "  %-24s %s\n" "ARGOCD_ADMIN_PASSWORD_MTIME" "Required for Argo CD password secret sync"
+	@printf "  %-24s %s\n" "ARGOCD_ADMIN_PASSWORD" "Required: password for Argo CD admin user"
+	@printf "  %-24s %s\n" "ARGOCD_ADMIN_PASSWORD_MTIME" "Auto-generated (override only when updating password on live ArgoCD)"
+	@printf "  %-24s %s\n" "TARGET_REVISION" "Git branch for Argo CD to sync (default: current branch)"
 	@printf "\nExamples:\n\n"
-	@printf "  make up ARGOCD_ADMIN_PASSWORD=MyStrongPassword ARGOCD_ADMIN_PASSWORD_MTIME=\"\$$(date -u -d '1 minute ago' +%%Y-%%m-%%dT%%H:%%M:%%SZ)\"\n"
-	@printf "  make down ARGOCD_ADMIN_PASSWORD=MyStrongPassword ARGOCD_ADMIN_PASSWORD_MTIME=\"\$$(date -u -d '1 minute ago' +%%Y-%%m-%%dT%%H:%%M:%%SZ)\"\n"
+	@printf "  make up ARGOCD_ADMIN_PASSWORD=MyStrongPassword\n"
+	@printf "  make down ARGOCD_ADMIN_PASSWORD=MyStrongPassword\n"
 	@printf "  make k8s-create KIND_CLUSTER=my-test-cluster\n"
 	@printf "  make mysql-restore\n"
 	@printf "  make mysql-restore BACKUP_FILE=gamedb_20250321_120000.sql.gz\n\n"
