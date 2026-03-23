@@ -54,14 +54,6 @@ TF_ARGOCD = TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
 TF_APP = TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
          TF_VAR_target_revision="$(TARGET_REVISION)"
 
-.PHONY: \
-	k8s-create k8s-delete \
-	argocd-install argocd-port-forward argocd-uninstall \
-	kind-build-load \
-	app-install app-port-forward app-uninstall \
-	mysql-list-backups mysql-restore \
-	up down
-
 $(LOG_DIR):
 	@mkdir -p $(LOG_DIR)
 
@@ -87,7 +79,7 @@ define run_step
 endef
 
 k8s-create: | $(LOG_DIR)
-	$(call step,1/7,Creating Kind cluster '$(KIND_CLUSTER)')
+	$(call step,1/6,Creating Kind cluster '$(KIND_CLUSTER)')
 	@if kind get clusters 2>/dev/null | grep -qx "$(KIND_CLUSTER)"; then \
 		printf "   -> Cluster 'kind-$(KIND_CLUSTER)' already exists, skipping creation\n"; \
 		kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1; \
@@ -102,37 +94,38 @@ k8s-create: | $(LOG_DIR)
 	$(call ok,Cluster ready: kind-$(KIND_CLUSTER))
 
 k8s-delete: | $(LOG_DIR)
-	$(call step,4/4,Deleting Kind cluster '$(KIND_CLUSTER)')
+	$(call step,3/3,Deleting Kind cluster '$(KIND_CLUSTER)')
 	$(call run_step,deleting Kind cluster,kind delete cluster --name $(KIND_CLUSTER),$(LOG_DIR)/kind-delete.log)
 	$(call ok,Cluster deleted: kind-$(KIND_CLUSTER))
 
 argocd-install: | $(LOG_DIR)
-	$(call step,2/7,Installing Argo CD)
+	$(call step,2/6,Installing Argo CD)
 	$(call run_step,initializing Terraform for Argo CD,$(TF_ARGOCD) terraform -chdir=terraform/ArgoCD init,$(LOG_DIR)/argocd-init.log)
 	$(call run_step,applying Argo CD resources,$(TF_ARGOCD) terraform -chdir=terraform/ArgoCD apply -auto-approve,$(LOG_DIR)/argocd-apply.log)
 	$(call ok,Argo CD installed)
 
 argocd-port-forward:
-	$(call step,3/7,Starting Argo CD port-forward)
+	$(call step,3/6,Starting Argo CD port-forward)
 	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
+	@kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s > /dev/null 2>&1
 	@kubectl port-forward svc/argocd-server -n argocd 8080:443 > /dev/null 2>&1 &
 	$(call ok,Argo CD available on http://localhost:8080)
 
 argocd-uninstall: | $(LOG_DIR)
-	$(call step,3/4,Removing Argo CD)
+	$(call step,2/3,Removing Argo CD)
 	$(call run_step,initializing Terraform for Argo CD removal,$(TF_ARGOCD) terraform -chdir=terraform/ArgoCD init,$(LOG_DIR)/argocd-destroy-init.log)
 	$(call run_step,destroying Argo CD resources,$(TF_ARGOCD) terraform -chdir=terraform/ArgoCD destroy -auto-approve,$(LOG_DIR)/argocd-destroy.log)
 	$(call ok,Argo CD removed)
 
 kind-build-load: | $(LOG_DIR)
-	$(call step,4/7,Building and loading local images)
+	$(call step,4/6,Building and loading local images)
 	$(call run_step,building Docker images,docker compose build frontend game-backend,$(LOG_DIR)/docker-build.log)
 	@docker pull busybox:1.36 > /dev/null 2>&1 || true
 	$(call run_step,loading Docker images into Kind,kind load docker-image vyking-frontend:latest vyking-game-backend:latest busybox:1.36 --name $(KIND_CLUSTER),$(LOG_DIR)/kind-load.log)
 	$(call ok,Images loaded into Kind)
 
 app-install: | $(LOG_DIR)
-	$(call step,3/5,Deploying Argo CD Applications (infrastructure + app))
+	$(call step,5/6,Deploying Argo CD Applications (infrastructure + app))
 	@kubectl create namespace game-frontend --dry-run=client -o yaml | kubectl apply -f - > /dev/null 2>&1
 	@kubectl create namespace game-backend --dry-run=client -o yaml | kubectl apply -f - > /dev/null 2>&1
 	$(call run_step,initializing Terraform for applications,$(TF_APP) terraform -chdir=terraform/App init,$(LOG_DIR)/app-init.log)
@@ -140,7 +133,7 @@ app-install: | $(LOG_DIR)
 	$(call ok,Infrastructure and application deployed)
 
 app-port-forward:
-	$(call step,7/7,Starting application port-forward)
+	$(call step,6/6,Starting application port-forward)
 	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
 	@kubectl port-forward svc/myapp-archer-game-frontend -n game-frontend 8081:80 > /dev/null 2>&1 &
 	$(call ok,Application available on http://localhost:8081)
