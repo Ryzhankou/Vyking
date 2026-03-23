@@ -10,7 +10,7 @@ MySQL database and backup CronJob, deployed via Argo CD Application `infrastruct
   - Backup CronJob (mysqldump every 5 min)
   - Backup PVC
 
-- `Mysql/init.sql` — Source SQL for database initialization (used in ConfigMap)
+- `mysql-chart/templates/configmap-init.yaml` — Init ConfigMap with schema and seed data (embedded SQL)
 
 ## Deployment
 
