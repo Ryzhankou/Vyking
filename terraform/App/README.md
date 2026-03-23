@@ -12,8 +12,7 @@ and creates two child Applications from the manifests found there:
 
 ## Branch / Target Revision
 
-`make app-install` syncs the root App from the current git branch. Child apps use `HEAD`
-(default branch). Push your branch before deploying, or use `main`:
+`make app-install` syncs the root Application from `TARGET_REVISION` (default: current git branch). Child apps use `targetRevision: HEAD` (default branch). Push your branch before deploying, or use `main`:
 
 ```bash
 make app-install ARGOCD_ADMIN_PASSWORD=<pwd> TARGET_REVISION=main
@@ -22,7 +21,7 @@ make app-install ARGOCD_ADMIN_PASSWORD=<pwd> TARGET_REVISION=main
 ## Prerequisites
 
 - Argo CD installed (`make argocd-install`)
-- Namespaces `game-frontend` and `game-backend` (created automatically by Makefile)
+- Kind cluster with context `kind-<KIND_CLUSTER>` (default: `kind-dev-global-cluster-0`)
 
 ## Usage
 
@@ -36,6 +35,14 @@ make app-install ARGOCD_ADMIN_PASSWORD=<password>
 ```bash
 make app-uninstall ARGOCD_ADMIN_PASSWORD=<password>
 ```
+
+## Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `argocd_admin_password` | — | Argo CD admin password (provider auth) |
+| `target_revision` | `main` | Git branch for root App to sync |
+| `cluster_context` | `kind-dev-global-cluster-0` | Kubectl context (override for different KIND_CLUSTER) |
 
 ## Deployment Order
 

@@ -1,6 +1,6 @@
 # Archer's Challenge Helm Chart
 
-Deploys the Archer's Challenge game (frontend + backend) to Kubernetes.
+Deploys the Archer's Challenge game (frontend + backend) to Kubernetes. Used by Argo CD Application `myapp` (see `argocd/apps/myapp.yaml`).
 
 ## Architecture
 
@@ -27,14 +27,13 @@ Service name will be `infrastructure-archer-db` (release name + subchart alias).
 ## Deploy Application
 
 ```bash
-# With default values (expects infrastructure-archer-db)
+# With Kind/local images (default uses FQDN for DB - works with App of Apps)
 helm install myapp applications/helm_chart -n game-frontend --create-namespace -f applications/helm_chart/values-kind.yaml
 
-# Or with custom values
+# Same-namespace override (backend and MySQL both in game-backend)
 helm install myapp applications/helm_chart -n game-frontend --create-namespace \
-  -f values-kind.yaml \
-  --set backend.config.DB_HOST=infrastructure-archer-db \
-  --set backend.existingSecret.name=infrastructure-archer-db
+  -f applications/helm_chart/values-kind.yaml \
+  --set backend.config.DB_HOST=infrastructure-archer-db
 ```
 
 ## Configuration
