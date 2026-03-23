@@ -8,7 +8,8 @@ Kubernetes deployment with GitOps (Argo CD), Terraform, and Helm. Includes a mul
 |-----------|-------------|
 | `applications/` | Custom Helm chart for frontend/backend, Dockerfiles |
 | `infrastructure/` | MySQL (Bitnami) + backup CronJob Helm chart |
-| `terraform/` | Argo CD installation + Argo CD Applications |
+| `argocd/apps/` | App of Apps manifests (`infrastructure.yaml`, `myapp.yaml`) |
+| `terraform/` | Argo CD installation + root Argo CD Application (App of Apps) |
 | `k8s/` | Kind config, Argo CD values |
 
 ## Prerequisites
@@ -77,9 +78,9 @@ make argocd-uninstall ARGOCD_ADMIN_PASSWORD="YourSecurePassword"
 | Target | Description |
 |--------|-------------|
 | `kind-build-load` | Build local Docker images and load them into Kind nodes. |
-| `app-install` | Deploy both Argo CD Applications (infrastructure + myapp) via a single `terraform apply`. |
+| `app-install` | Deploy the root Argo CD Application (App of Apps) via `terraform apply`. ArgoCD then creates child applications (`infrastructure` → `myapp`) in order. |
 | `app-port-forward` | Expose the frontend at http://localhost:8081. |
-| `app-uninstall` | Remove both Argo CD Applications via Terraform. |
+| `app-uninstall` | Remove the root Argo CD Application (and child apps) via Terraform. |
 
 ```bash
 make kind-build-load
@@ -123,7 +124,7 @@ make argocd-port-forward
 
 Open https://localhost:8080. Login: `admin` / `YourSecurePassword`.
 
-You should see two applications: **infrastructure** and **myapp**, both synced and healthy.
+You should see three applications: **apps** (root), **infrastructure**, and **myapp**, all synced and healthy.
 
 ### 3. Backup CronJob
 

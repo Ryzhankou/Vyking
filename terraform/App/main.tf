@@ -1,32 +1,55 @@
-# Shared Git repository
+# Register the Git repository
 resource "argocd_repository" "apps_repo" {
   repo = var.repo_url
 }
 
-# Infrastructure module: MySQL + backup CronJob (deploys first)
-module "Infrastructure" {
-  source = "./modules/Infrastructure"
-
-  repo_url              = argocd_repository.apps_repo.repo
-  target_revision       = var.target_revision
-  helm_chart_path       = var.infra_helm_chart_path
-  destination_namespace = var.infra_destination_namespace
-  extra_helm_repos      = var.infra_extra_helm_repos
+# Register Bitnami Helm repository (required for MySQL subchart dependency)
+resource "argocd_repository" "bitnami" {
+  repo = "https://charts.bitnami.com/bitnami"
+  type = "helm"
 }
 
-# App module: Frontend + Backend (deploys after infrastructure)
-module "App" {
-  source = "./modules/App"
+# Root "App of Apps" — watches argocd/apps/ in Git and creates child Applications.
+# Deployment order is controlled by sync-wave annotations on the child manifests:
+#   wave 0: infrastructure (MySQL + backup CronJob)
+#   wave 1: myapp (frontend + backend)
+resource "argocd_application" "root" {
+  metadata {
+    name      = "apps"
+    namespace = "argocd"
+  }
 
-  repo_url               = argocd_repository.apps_repo.repo
-  target_revision        = var.target_revision
-  project_name           = var.app_project_name
-  application_name       = var.app_application_name
-  destination_namespaces = var.app_destination_namespaces
-  destination_server     = var.app_destination_server
-  helm_chart_path        = var.app_helm_chart_path
-  helm_release_name      = var.app_helm_release_name
-  helm_value_files       = var.app_helm_value_files
+  # Wait for the root app (and therefore all child apps) to become healthy.
+  # ArgoCD aggregates child Application health, so Terraform only returns
+  # after MySQL, frontend, and backend are all running.
+  wait = true
 
-  depends_on = [module.Infrastructure]
+  spec {
+    project = "default"
+
+    destination {
+      server    = "https://kubernetes.default.svc"
+      namespace = "argocd"
+    }
+
+    source {
+      repo_url        = argocd_repository.apps_repo.repo
+      path            = "argocd/apps"
+      target_revision = var.target_revision
+    }
+
+    sync_policy {
+      automated {
+        prune     = true
+        self_heal = true
+      }
+
+      sync_options = ["CreateNamespace=true"]
+    }
+  }
+
+  depends_on = [
+    argocd_repository.apps_repo,
+    argocd_repository.bitnami,
+  ]
 }
