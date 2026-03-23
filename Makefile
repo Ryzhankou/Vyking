@@ -247,6 +247,13 @@ KIND_CLUSTER ?= dev-global-cluster-0
 TARGET_REVISION ?= $(shell git branch --show-current 2>/dev/null || echo main)
 LOG_DIR ?= .logs
 
+# MySQL backup/restore (must match infrastructure helm release)
+MYSQL_NS ?= game-backend
+MYSQL_RELEASE ?= infrastructure
+MYSQL_BACKUP_PVC ?= $(MYSQL_RELEASE)-backup-pvc
+RESTORE_JOB_TEMPLATE = infrastructure/mysql-chart/restore-job.yaml
+RESTORE_LIST_TEMPLATE = infrastructure/mysql-chart/restore-job-list.yaml
+
 .DEFAULT_GOAL := help
 
 .PHONY: \
@@ -256,6 +263,7 @@ LOG_DIR ?= .logs
 	kind-build-load \
 	infrastructure-install infrastructure-uninstall \
 	app-install app-port-forward app-uninstall \
+	mysql-list-backups mysql-restore \
 	up down
 
 help:
@@ -272,6 +280,8 @@ help:
 	@printf "  %-24s %s\n" "app-install" "Deploy application"
 	@printf "  %-24s %s\n" "app-port-forward" "Expose app on http://localhost:8081"
 	@printf "  %-24s %s\n" "app-uninstall" "Remove application"
+	@printf "  %-24s %s\n" "mysql-list-backups" "List available MySQL backups"
+	@printf "  %-24s %s\n" "mysql-restore" "Restore MySQL from backup (use BACKUP_FILE= for specific)"
 	@printf "  %-24s %s\n" "up" "Create full local environment"
 	@printf "  %-24s %s\n" "down" "Destroy full local environment"
 	@printf "\nVariables:\n\n"
@@ -282,7 +292,9 @@ help:
 	@printf "\nExamples:\n\n"
 	@printf "  make up ARGOCD_ADMIN_PASSWORD=MyStrongPassword ARGOCD_ADMIN_PASSWORD_MTIME=\"\$$(date -u -d '1 minute ago' +%%Y-%%m-%%dT%%H:%%M:%%SZ)\"\n"
 	@printf "  make down ARGOCD_ADMIN_PASSWORD=MyStrongPassword ARGOCD_ADMIN_PASSWORD_MTIME=\"\$$(date -u -d '1 minute ago' +%%Y-%%m-%%dT%%H:%%M:%%SZ)\"\n"
-	@printf "  make k8s-create KIND_CLUSTER=my-test-cluster\n\n"
+	@printf "  make k8s-create KIND_CLUSTER=my-test-cluster\n"
+	@printf "  make mysql-restore\n"
+	@printf "  make mysql-restore BACKUP_FILE=gamedb_20250321_120000.sql.gz\n\n"
 
 TF_ARGOCD = TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
             TF_VAR_argocd_admin_password_mtime="$(ARGOCD_ADMIN_PASSWORD_MTIME)"
@@ -297,6 +309,7 @@ TF_APP = TF_VAR_argocd_admin_password="$(ARGOCD_ADMIN_PASSWORD)" \
 	kind-build-load \
 	infrastructure-install infrastructure-uninstall \
 	app-install app-port-forward app-uninstall \
+	mysql-list-backups mysql-restore \
 	up down
 
 $(LOG_DIR):
@@ -390,6 +403,37 @@ app-uninstall: | $(LOG_DIR)
 	$(call run_step,initializing Terraform for application removal,$(TF_APP) terraform -chdir=terraform/App init,$(LOG_DIR)/app-destroy-init.log)
 	$(call run_step,destroying application resources,$(TF_APP) terraform -chdir=terraform/App destroy -auto-approve,$(LOG_DIR)/app-destroy.log)
 	$(call ok,Application removed)
+
+mysql-list-backups:
+	$(call info,Listing MySQL backups)
+	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
+	@JOB_NAME="mysql-backup-list-$$(date +%s)"; \
+		sed -e 's|__MYSQL_NS__|$(MYSQL_NS)|g' \
+		    -e 's|__BACKUP_PVC__|$(MYSQL_BACKUP_PVC)|g' \
+		    -e "s|__JOB_NAME__|$$JOB_NAME|g" \
+		    $(RESTORE_LIST_TEMPLATE) | kubectl apply -f -; \
+		kubectl wait --for=condition=complete job/$$JOB_NAME -n $(MYSQL_NS) --timeout=60s 2>/dev/null || true; \
+		kubectl logs job/$$JOB_NAME -n $(MYSQL_NS) 2>/dev/null || true; \
+		kubectl delete job $$JOB_NAME -n $(MYSQL_NS) --ignore-not-found 2>/dev/null || true
+	$(call ok,Done)
+
+mysql-restore: | $(LOG_DIR)
+	$(call info,Restoring MySQL from backup)
+	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
+	@JOB_NAME="mysql-restore-$$(date +%s)"; \
+		sed -e 's|__MYSQL_NS__|$(MYSQL_NS)|g' \
+		    -e 's|__MYSQL_RELEASE__|$(MYSQL_RELEASE)|g' \
+		    -e 's|__BACKUP_PVC__|$(MYSQL_BACKUP_PVC)|g' \
+		    -e 's|__BACKUP_FILE__|$(BACKUP_FILE)|g' \
+		    -e "s|__JOB_NAME__|$$JOB_NAME|g" \
+		    $(RESTORE_JOB_TEMPLATE) | kubectl apply -f -; \
+		printf "   -> Waiting for restore job $$JOB_NAME to complete...\n"; \
+		kubectl wait --for=condition=complete job/$$JOB_NAME -n $(MYSQL_NS) --timeout=300s 2>/dev/null || { \
+			kubectl logs job/$$JOB_NAME -n $(MYSQL_NS) 2>/dev/null; \
+			exit 1; \
+		}; \
+		kubectl logs job/$$JOB_NAME -n $(MYSQL_NS)
+	$(call ok,Restore completed)
 
 up:
 	$(call info,Starting full environment deployment)
