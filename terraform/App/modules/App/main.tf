@@ -1,29 +1,24 @@
 # App module: Frontend and Backend
 
-resource "argocd_project" "myapp" {
+resource "argocd_project" "app" {
   metadata {
-    name      = "myapp"
+    name      = var.project_name
     namespace = "argocd"
   }
 
   spec {
-    description = "Project for myapp"
+    description = "Project for ${var.project_name}"
 
     source_repos = [
       var.repo_url
     ]
 
-    destination {
-      server    = "https://kubernetes.default.svc"
-      namespace = "myapp"
-    }
-    destination {
-      server    = "https://kubernetes.default.svc"
-      namespace = "game-frontend"
-    }
-    destination {
-      server    = "https://kubernetes.default.svc"
-      namespace = "game-backend"
+    dynamic "destination" {
+      for_each = var.destination_namespaces
+      content {
+        server    = var.destination_server
+        namespace = destination.value
+      }
     }
 
     cluster_resource_whitelist {
@@ -38,30 +33,30 @@ resource "argocd_project" "myapp" {
   }
 }
 
-resource "argocd_application" "myapp" {
+resource "argocd_application" "app" {
   metadata {
-    name      = "myapp"
+    name      = var.application_name
     namespace = "argocd"
   }
 
   wait = true
 
   spec {
-    project = argocd_project.myapp.metadata[0].name
+    project = argocd_project.app.metadata[0].name
 
     destination {
-      server    = "https://kubernetes.default.svc"
-      namespace = "myapp"
+      server    = var.destination_server
+      namespace = var.application_name
     }
 
     source {
       repo_url        = var.repo_url
-      path            = "applications/helm_chart"
+      path            = var.helm_chart_path
       target_revision = var.target_revision
 
       helm {
-        release_name = "myapp"
-        value_files   = ["values-kind.yaml"]
+        release_name = var.helm_release_name
+        value_files  = var.helm_value_files
       }
     }
 
@@ -76,6 +71,6 @@ resource "argocd_application" "myapp" {
   }
 
   depends_on = [
-    argocd_project.myapp
+    argocd_project.app
   ]
 }

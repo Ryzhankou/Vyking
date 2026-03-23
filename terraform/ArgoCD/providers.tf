@@ -1,7 +1,6 @@
 provider "helm" {
-    kubernetes {
-        config_path = "~/.kube/config"
-        config_context = "kind-dev-global-cluster-0"
-
-    }
+  kubernetes {
+    config_path    = var.kube_config_path
+    config_context = var.cluster_context
+  }
 }
