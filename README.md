@@ -53,22 +53,20 @@ make argocd-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_
 
 ### 4. Deploy Argo CD Applications (Infrastructure + App)
 
-This creates two Argo CD Applications that sync from this repository:
+A single `terraform apply` creates both Argo CD Applications that sync from this repository:
 
 - **infrastructure**: MySQL (Bitnami) + backup CronJob
 - **myapp**: Frontend and backend
 
 ```bash
-make infrastructure-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
-make app-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
+make app-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD"
 ```
 
 For Kind with locally built images:
 
 ```bash
 make kind-build-load
-make infrastructure-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
-make app-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
+make app-install ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD"
 ```
 
 ### 5. Access Argo CD UI
@@ -79,27 +77,41 @@ make argocd-port-forward
 
 Open https://localhost:8080 (accept the self-signed certificate).
 
-Get the admin password:
-
-```bash
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
-```
-
-Login: `admin` / `<password>`
+Login: `admin` / `<the password you set in ARGOCD_ADMIN_PASSWORD>`
 
 You should see two applications: **infrastructure** and **myapp**. Both should sync automatically.
 
 ### 6. Verify Backup CronJob
 
-Check that the CronJob runs and creates backups:
+Check that the CronJob and its Jobs exist:
 
 ```bash
-# List CronJob pods
-kubectl get pods -n game-backend -l app.kubernetes.io/component=backup
+# Verify the CronJob is scheduled
+kubectl get cronjob -n game-backend
 
-# Exec into a backup pod to verify backup files
-kubectl exec -n game-backend -it $(kubectl get pods -n game-backend -l app.kubernetes.io/component=backup -o jsonpath='{.items[0].metadata.name}') -- ls -la /backups
+# List Jobs created by the CronJob (runs every 5 minutes)
+kubectl get jobs -n game-backend
 ```
+
+Because CronJob pods terminate after completion, use a temporary pod to inspect the backup PVC directly:
+
+```bash
+kubectl run backup-check -n game-backend --restart=Never --rm -it \
+  --image=busybox \
+  --overrides='{
+    "spec": {
+      "volumes": [{"name": "backups", "persistentVolumeClaim": {"claimName": "infrastructure-backup-pvc"}}],
+      "containers": [{
+        "name": "backup-check",
+        "image": "busybox",
+        "command": ["ls", "-lh", "/backups"],
+        "volumeMounts": [{"name": "backups", "mountPath": "/backups"}]
+      }]
+    }
+  }'
+```
+
+You should see timestamped `.sql.gz` files, e.g. `gamedb_20250321_120000.sql.gz`.
 
 ### 7. Access the Application
 
@@ -115,9 +127,8 @@ Open http://localhost:8081. The frontend proxies /api/ to the backend; data pers
 ### 8. Clean Up
 
 ```bash
-# Remove Argo CD Applications
-make app-uninstall ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
-make infrastructure-uninstall ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
+# Remove both Argo CD Applications (infrastructure + app)
+make app-uninstall ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD"
 
 # Uninstall Argo CD
 make argocd-uninstall ARGOCD_ADMIN_PASSWORD="$ARGOCD_ADMIN_PASSWORD" ARGOCD_ADMIN_PASSWORD_MTIME="$ARGOCD_ADMIN_PASSWORD_MTIME"
@@ -130,8 +141,9 @@ make k8s-delete
 
 1. **k8s-create** — Creates Kind cluster (1 control-plane + 3 workers)
 2. **argocd-install** — Installs Argo CD via Terraform Helm provider
-3. **infrastructure-install** — Deploys infrastructure Argo CD Application (MySQL + backup CronJob)
-4. **app-install** — Deploys applications Argo CD Application (frontend + backend)
+3. **app-install** — Single `terraform apply` that deploys both Argo CD Applications:
+   - **infrastructure**: MySQL (Bitnami) + backup CronJob
+   - **myapp**: Frontend + backend
 
 Argo CD syncs both applications from the Git repository.
 
@@ -159,9 +171,7 @@ make mysql-restore BACKUP_FILE=gamedb_20250321_120000.sql.gz  # From specific fi
 | `argocd-install` | Install Argo CD via Terraform |
 | `argocd-port-forward` | Port-forward Argo CD UI to 8080 |
 | `argocd-uninstall` | Uninstall Argo CD |
-| `infrastructure-install` | Deploy infrastructure Argo CD Application (MySQL + backup) |
-| `infrastructure-uninstall` | Remove infrastructure application |
-| `app-install` | Deploy applications Argo CD Application (frontend + backend) |
+| `app-install` | Deploy both Argo CD Applications (infrastructure + frontend/backend) via single `terraform apply` |
 | `app-port-forward` | Port-forward frontend to 8081 |
 | `app-uninstall` | Remove applications |
 | `kind-build-load` | Build and load images into Kind |

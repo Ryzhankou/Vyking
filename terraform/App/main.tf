@@ -4,12 +4,15 @@ resource "argocd_repository" "apps_repo" {
 }
 
 # Infrastructure module: MySQL + backup CronJob (deploys first)
-# module "Infrastructure" {
-#   source = "./modules/Infrastructure"
+module "Infrastructure" {
+  source = "./modules/Infrastructure"
 
-#   repo_url        = argocd_repository.apps_repo.repo
-#   target_revision = var.target_revision
-# }
+  repo_url              = argocd_repository.apps_repo.repo
+  target_revision       = var.target_revision
+  helm_chart_path       = var.infra_helm_chart_path
+  destination_namespace = var.infra_destination_namespace
+  extra_helm_repos      = var.infra_extra_helm_repos
+}
 
 # App module: Frontend + Backend (deploys after infrastructure)
 module "App" {
@@ -25,5 +28,5 @@ module "App" {
   helm_release_name      = var.app_helm_release_name
   helm_value_files       = var.app_helm_value_files
 
-  # depends_on = [module.Infrastructure]
+  depends_on = [module.Infrastructure]
 }
