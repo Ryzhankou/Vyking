@@ -2,9 +2,9 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: mysql-backup
+  name: {{ include "mysql-chart.fullname" . }}-backup
   labels:
-    app: mysql-backup
+    {{- include "mysql-chart.backup.labels" . | nindent 4 }}
 spec:
   schedule: {{ .Values.backup.schedule | quote }}
   concurrencyPolicy: Forbid
@@ -16,7 +16,7 @@ spec:
       template:
         metadata:
           labels:
-            app: mysql-backup
+            {{- include "mysql-chart.backup.labels" . | nindent 12 }}
         spec:
           restartPolicy: OnFailure
           containers:
@@ -69,5 +69,5 @@ spec:
           volumes:
             - name: backup-storage
               persistentVolumeClaim:
-                claimName: mysql-backup-pvc
+                claimName: {{ include "mysql-chart.fullname" . }}-backup-pvc
 {{- end }}

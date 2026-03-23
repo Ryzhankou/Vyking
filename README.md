@@ -104,11 +104,11 @@ kubectl exec -n game-backend -it $(kubectl get pods -n game-backend -l app=mysql
 With Kind and local images:
 
 ```bash
-# Port-forward frontend
-kubectl port-forward -n game-frontend svc/myapp-frontend 8080:80
+# Port-forward frontend (service name: <release>-archer-game-frontend)
+kubectl port-forward -n game-frontend svc/myapp-archer-game-frontend 8081:80
 ```
 
-Open http://localhost:8080. The frontend should communicate with the backend; data persists in MySQL.
+Open http://localhost:8081. The frontend proxies /api/ to the backend; data persists in MySQL.
 
 ### 8. Clean Up
 
@@ -160,6 +160,32 @@ Argo CD syncs both applications from the Git repository.
 | `k8s-fix-inotify` | Apply inotify limits workaround for "too many open files" |
 
 ## Troubleshooting
+
+### No data in Leaderboard / "Loading…" forever
+
+1. **Check backend logs** (should show incoming requests):
+   ```bash
+   kubectl logs -n game-backend -l app.kubernetes.io/component=backend --tail=50 -f
+   ```
+   If you see no `Request: GET /api/leaderboard` — requests are not reaching the backend.
+
+2. **Check MySQL has data**:
+   ```bash
+   kubectl exec -n game-backend infrastructure-archer-db-0 -- mysql -ugameuser -pgamepass gamedb -e "SELECT * FROM leaderboard LIMIT 5"
+   ```
+
+3. **Correct port-forward** (service name must match Argo CD release):
+   ```bash
+   kubectl port-forward -n game-frontend svc/myapp-archer-game-frontend 8081:80
+   ```
+   Then open http://localhost:8081 (F12 → Console shows `[Archer] fetch leaderboard: /api/leaderboard`).
+
+4. **If MySQL empty** — delete MySQL StatefulSet + PVC, Argo CD will recreate:
+   ```bash
+   kubectl delete statefulset infrastructure-archer-db -n game-backend
+   kubectl delete pvc data-infrastructure-archer-db-0 -n game-backend
+   # Wait for Argo CD to sync and recreate
+   ```
 
 ### MySQL: "too many open files" / fsnotify watcher errors
 

@@ -1,0 +1,42 @@
+# Infrastructure MySQL Chart
+
+MySQL database (Bitnami) and backup CronJob for Archer's Challenge game.
+
+## Architecture
+
+- **MySQL**: Bitnami MySQL subchart (alias: archer-db), deploys to `game-backend` namespace
+- **Init**: Custom ConfigMap with leaderboard table and seed data
+- **Backup**: CronJob runs mysqldump to a dedicated PVC on schedule
+
+## Prerequisites
+
+- Kubernetes cluster (>= 1.19)
+- StorageClass for PVCs (or use default)
+
+## Install
+
+```bash
+helm dependency update infrastructure/mysql-chart
+helm install infrastructure infrastructure/mysql-chart -n game-backend --create-namespace
+```
+
+Service: `infrastructure-archer-db`, Secret: `infrastructure-archer-db` (keys: `mysql-root-password`, `mysql-password`).
+
+## Configuration
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `archer-db.auth.rootPassword` | Root password | `rootpassword` |
+| `archer-db.auth.database` | Database name | `gamedb` |
+| `archer-db.auth.username` | App user | `gameuser` |
+| `archer-db.auth.password` | App password | `gamepass` |
+| `archer-db.primary.persistence.size` | Data PVC size | `8Gi` |
+| `backup.enabled` | Enable backup CronJob | `true` |
+| `backup.schedule` | Cron schedule | `*/5 * * * *` |
+| `backup.pvcSize` | Backup PVC size | `5Gi` |
+
+## Production
+
+- Use `archer-db.auth.existingSecret` for root and app passwords
+- Pin image tag (avoid `latest`)
+- Adjust `backup.schedule` for production retention

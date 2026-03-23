@@ -6,37 +6,35 @@ Deploys the Archer's Challenge game (frontend + backend) to Kubernetes.
 
 - **Frontend**: `game-frontend` namespace, nodes with `tier: frontend`
 - **Backend**: `game-backend` namespace, nodes with `tier: backend`
-- **Database**: Deploy separately with `applications/database-chart`
+- **Database**: Deploy separately with `infrastructure/mysql-chart`
 
 ## Prerequisites
 
-- Kubernetes cluster with nodes labeled `tier: frontend` and `tier: backend`
-- Ingress controller (e.g. nginx-ingress)
-- Database deployed first (see database-chart)
+- Kubernetes cluster (>= 1.19) with nodes labeled `tier: frontend` and `tier: backend`
+- Ingress controller (e.g. nginx-ingress) if using ingress
+- Database deployed first (see infrastructure/mysql-chart)
 
 ## Deploy Database First
 
 ```bash
-# Add Bitnami repo
-helm repo add bitnami https://charts.bitnami.com/bitnami
-helm repo update
-
-# Create namespace and deploy database
 kubectl create namespace game-backend
-helm dependency update applications/database-chart
-helm install archer-db applications/database-chart -n game-backend
+helm dependency update infrastructure/mysql-chart
+helm install infrastructure infrastructure/mysql-chart -n game-backend
 ```
+
+Service name will be `infrastructure-archer-db` (release name + subchart alias).
 
 ## Deploy Application
 
 ```bash
-# Install app chart (creates game-frontend and game-backend namespaces)
-helm install archer-game applications/helm_chart -n game-frontend --create-namespace
+# With default values (expects infrastructure-archer-db)
+helm install myapp applications/helm_chart -n game-frontend --create-namespace -f applications/helm_chart/values-kind.yaml
 
 # Or with custom values
-helm install archer-game applications/helm_chart -n game-frontend --create-namespace \
-  -f values.yaml \
-  --set backend.env.DB_HOST=archer-db-mysql
+helm install myapp applications/helm_chart -n game-frontend --create-namespace \
+  -f values-kind.yaml \
+  --set backend.config.DB_HOST=infrastructure-archer-db \
+  --set backend.existingSecret.name=infrastructure-archer-db
 ```
 
 ## Configuration
@@ -47,6 +45,15 @@ helm install archer-game applications/helm_chart -n game-frontend --create-names
 | `frontend.nodeSelector` | Node selector for frontend pods | `tier: frontend` |
 | `backend.namespace` | Backend namespace | `game-backend` |
 | `backend.nodeSelector` | Node selector for backend pods | `tier: backend` |
-| `backend.env.DB_HOST` | MySQL service name | `archer-db-mysql` |
+| `backend.config.DB_HOST` | MySQL service name | `infrastructure-archer-db` |
+| `backend.existingSecret.name` | Secret with DB_PASSWORD (key: mysql-password) | `infrastructure-archer-db` |
 
-Ensure `backend.env.DB_HOST` matches the database release service name (e.g. `archer-db-mysql` when database is installed as `archer-db`).
+**Important**: `backend.config.DB_HOST` and `backend.existingSecret.name` must match the MySQL service and secret from the infrastructure chart. With release `infrastructure`, they are `infrastructure-archer-db`.
+
+## Image Tags
+
+For production, avoid `tag: "latest"`. Override with a specific version:
+
+```bash
+--set frontend.image.tag=1.2.3 --set backend.image.tag=1.2.3
+```

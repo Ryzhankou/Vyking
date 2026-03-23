@@ -83,7 +83,7 @@
 
 # app-port-forward:
 # 	@kubectl config use-context kind-dev-global-cluster-0
-# 	@kubectl port-forward svc/archer-game-frontend -n game-frontend 8081:80 > /dev/null 2>&1 &
+# 	@kubectl port-forward svc/myapp-archer-game-frontend -n game-frontend 8081:80 > /dev/null 2>&1 &
 # # 	@kubectl port-forward svc/game-backend -n game-backend 8082:80 > /dev/null 2>&1 &
 
 # app-uninstall: # Remove ArgoCD Applications
@@ -205,7 +205,7 @@
 # app-port-forward:
 # 	$(call info,Starting application port-forward)
 # 	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
-# 	@kubectl port-forward svc/archer-game-frontend -n game-frontend 8081:80 > /dev/null 2>&1 &
+# 	@kubectl port-forward svc/myapp-archer-game-frontend -n game-frontend 8081:80 > /dev/null 2>&1 &
 # 	$(call ok,Application available on http://localhost:8081)
 
 # app-uninstall: | $(LOG_DIR)
@@ -382,7 +382,7 @@ app-install: | $(LOG_DIR)
 app-port-forward:
 	$(call step,7/7,Starting application port-forward)
 	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
-	@kubectl port-forward svc/archer-game-frontend -n game-frontend 8081:80 > /dev/null 2>&1 &
+	@kubectl port-forward svc/myapp-archer-game-frontend -n game-frontend 8081:80 > /dev/null 2>&1 &
 	$(call ok,Application available on http://localhost:8081)
 
 app-uninstall: | $(LOG_DIR)

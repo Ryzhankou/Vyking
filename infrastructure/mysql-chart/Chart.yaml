@@ -4,6 +4,16 @@ description: MySQL database and backup CronJob (Bitnami MySQL)
 type: application
 version: 0.2.0
 appVersion: "8.0"
+kubeVersion: ">=1.19.0-0"
+keywords:
+  - mysql
+  - database
+  - backup
+home: https://github.com/Ryzhankou/Vyking
+sources:
+  - https://github.com/Ryzhankou/Vyking
+maintainers:
+  - name: Vyking Team
 dependencies:
   - name: mysql
     alias: archer-db

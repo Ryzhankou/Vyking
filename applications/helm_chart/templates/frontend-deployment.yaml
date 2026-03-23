@@ -16,8 +16,10 @@ spec:
       labels:
         {{- include "game.frontend.selectorLabels" . | nindent 8 }}
     spec:
+      {{- with .Values.frontend.nodeSelector }}
       nodeSelector:
-        {{- toYaml .Values.frontend.nodeSelector | nindent 8 }}
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: frontend
           image: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"

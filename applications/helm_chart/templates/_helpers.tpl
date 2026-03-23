@@ -13,7 +13,7 @@ Create a default fully qualified app name.
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- $name := default .Chart.Name .Values.nameOverride }}
-{{- printf "%s" $name | trunc 63 | trimSuffix "-" }}
+{{- printf "%s-%s" .Release.Name $name | trunc 63 | trimSuffix "-" }}
 {{- end }}
 {{- end }}
 
@@ -21,8 +21,10 @@ Create a default fully qualified app name.
 Common labels
 */}}
 {{- define "game.labels" -}}
-helm.sh/chart: {{ printf "%s-%s" .Chart.Name .Chart.Version | quote }}
+helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
 
 {{/*
@@ -31,6 +33,7 @@ Backend selector labels
 {{- define "game.backend.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "game.fullname" . }}-backend
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: backend
 {{- end }}
 
 {{/*
@@ -39,4 +42,5 @@ Frontend selector labels
 {{- define "game.frontend.selectorLabels" -}}
 app.kubernetes.io/name: {{ include "game.fullname" . }}-frontend
 app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: frontend
 {{- end }}
