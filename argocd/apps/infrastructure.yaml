@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: infrastructure
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  # No finalizer — MySQL StatefulSet and PVC are preserved on delete.
+  # This prevents a race condition where Terraform tries to delete the
+  # ArgoCD project before the slow MySQL teardown completes.
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/Ryzhankou/Vyking.git
+    path: infrastructure/mysql-chart
+    targetRevision: HEAD
+    helm:
+      releaseName: infrastructure
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: game-backend
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,18 +1,19 @@
-# Terraform App — Argo CD Applications
+# Terraform App — App of Apps
 
-Two modules create Argo CD Applications that sync from [Ryzhankou/Vyking](https://github.com/Ryzhankou/Vyking):
+Creates a single root Argo CD Application (`apps`) that watches `argocd/apps/` in Git
+and creates two child Applications from the manifests found there:
 
-| Module | Application | Path | Deploys |
-|--------|-------------|------|---------|
-| `Infrastructure` | infrastructure | `infrastructure/mysql-chart` | MySQL (Bitnami) + backup CronJob |
-| `App` | myapp | `applications/helm_chart` | Frontend + Backend |
+| Child App | Manifest | Path | Deploys | Sync Wave |
+|-----------|----------|------|---------|-----------|
+| `infrastructure` | `argocd/apps/infrastructure.yaml` | `infrastructure/mysql-chart` | MySQL (Bitnami) + backup CronJob | 0 |
+| `myapp` | `argocd/apps/myapp.yaml` | `applications/helm_chart` | Frontend + Backend | 1 |
 
-**Deployment order:** Infrastructure deploys first, then App (via `depends_on`).
+**Deployment order:** Wave 0 (`infrastructure`) must be healthy before wave 1 (`myapp`) starts.
 
 ## Branch / Target Revision
 
-By default, `make app-install` uses the **current git branch** for Argo CD sync.
-The branch must be pushed to `origin` before deploying. Override:
+`make app-install` syncs the root App from the current git branch. Child apps use `HEAD`
+(default branch). Push your branch before deploying, or use `main`:
 
 ```bash
 make app-install ARGOCD_ADMIN_PASSWORD=<pwd> TARGET_REVISION=main
@@ -24,12 +25,6 @@ make app-install ARGOCD_ADMIN_PASSWORD=<pwd> TARGET_REVISION=main
 - Namespaces `game-frontend` and `game-backend` (created automatically by Makefile)
 
 ## Usage
-
-```bash
-make app-install ARGOCD_ADMIN_PASSWORD=<password>
-```
-
-For Kind with local images:
 
 ```bash
 make kind-build-load
@@ -47,4 +42,4 @@ make app-uninstall ARGOCD_ADMIN_PASSWORD=<password>
 1. `make k8s-create` — create Kind cluster
 2. `make argocd-install` — install Argo CD
 3. `make kind-build-load` — build and load local images
-4. `make app-install` — deploy both Argo CD Applications (infrastructure first, then app)
+4. `make app-install` — deploy root App of Apps (infrastructure → myapp)
