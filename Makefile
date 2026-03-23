@@ -138,6 +138,17 @@ app-install: | $(LOG_DIR)
 	$(call run_step,applying both Argo CD Applications,$(TF_APP) terraform -chdir=terraform/App apply -auto-approve,$(LOG_DIR)/app-apply.log)
 	$(call ok,Infrastructure and application deployed)
 
+app-wait:
+	$(call step,6/7,Waiting for application resources)
+	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
+	@printf "   -> Waiting for service myapp-archer-game-frontend...\n"
+	@until kubectl get svc myapp-archer-game-frontend -n game-frontend > /dev/null 2>&1; do \
+		sleep 2; \
+	done
+	@printf "   -> Waiting for deployment myapp-archer-game-frontend...\n"
+	@kubectl wait --for=condition=available deployment/myapp-archer-game-frontend -n game-frontend --timeout=300s
+	$(call ok,Application is ready)
+
 app-port-forward:
 	$(call step,6/6,Starting application port-forward)
 	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
@@ -188,6 +199,7 @@ up:
 	@$(MAKE) --no-print-directory argocd-port-forward
 	@$(MAKE) --no-print-directory kind-build-load
 	@$(MAKE) --no-print-directory app-install
+	@$(MAKE) --no-print-directory app-wait
 	@$(MAKE) --no-print-directory app-port-forward
 	@printf "\n"
 	$(call ok,Environment is ready)
