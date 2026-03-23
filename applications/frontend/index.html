@@ -531,20 +531,31 @@ function hidePop() {
 
 async function saveScore() {
   try {
-    await fetch(API + '/api/archer/score', {
+    const res = await fetch(API + '/api/archer/score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ player_name: G.name, score: G.totalScore }),
     });
+    if (!res.ok) {
+      throw new Error('Save failed: ' + res.status);
+    }
     loadLeaderboard();
-  } catch(e) { console.warn('Save score failed', e); }
+  } catch (e) {
+    console.error('Save score failed', e);
+    const tbody = document.getElementById('lbBody');
+    tbody.innerHTML = '<tr><td colspan="4" style="color:#e74c3c;text-align:center;padding:12px">Failed to save score. Check backend connection.</td></tr>';
+    loadLeaderboard();
+  }
 }
 
 async function loadLeaderboard() {
+  const tbody = document.getElementById('lbBody');
   try {
     const res = await fetch(API + '/api/leaderboard');
+    if (!res.ok) {
+      throw new Error('Leaderboard request failed: ' + res.status);
+    }
     const data = await res.json();
-    const tbody = document.getElementById('lbBody');
     if (!data || data.length === 0) {
       tbody.innerHTML = '<tr><td colspan="4" style="color:#444;text-align:center;padding:12px">No scores yet</td></tr>';
       return;
@@ -555,7 +566,10 @@ async function loadLeaderboard() {
                   e.rank === 3 ? '<span class="medal-3">🥉</span>' : e.rank;
       return `<tr><td>${med}</td><td>${esc(e.player_name)}</td><td><strong>${e.score}</strong></td><td style="color:#444;font-size:.75rem">${e.created_at.split(' ')[0]}</td></tr>`;
     }).join('');
-  } catch { }
+  } catch (e) {
+    console.error('Leaderboard load error:', e);
+    tbody.innerHTML = '<tr><td colspan="4" style="color:#e74c3c;text-align:center;padding:12px">Failed to load leaderboard. Check backend logs.</td></tr>';
+  }
 }
 
 function esc(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }

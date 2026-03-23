@@ -9,6 +9,10 @@ data:
     ROOT_PASSWORD="$(cat /opt/bitnami/mysql/secrets/mysql-root-password)"
 
     mysql --socket=/opt/bitnami/mysql/tmp/mysql.sock -uroot -p"${ROOT_PASSWORD}" <<'EOF'
+    CREATE USER IF NOT EXISTS 'gameuser'@'%' IDENTIFIED BY 'gamepass';
+    GRANT ALL PRIVILEGES ON gamedb.* TO 'gameuser'@'%';
+    FLUSH PRIVILEGES;
+
     USE gamedb;
 
     CREATE TABLE IF NOT EXISTS leaderboard (
