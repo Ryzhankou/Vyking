@@ -19,7 +19,7 @@ RESTORE_LIST_TEMPLATE = infrastructure/mysql-chart/restore-job-list.yaml
 	k8s-create k8s-delete \
 	argocd-install argocd-port-forward argocd-uninstall \
 	kind-build-load \
-	app-install app-port-forward app-uninstall \
+	app-install app-wait app-port-forward app-uninstall \
 	mysql-list-backups mysql-restore \
 	up down
 
@@ -33,6 +33,7 @@ help:
 	@printf "  %-24s %s\n" "argocd-uninstall" "Remove Argo CD via Terraform"
 	@printf "  %-24s %s\n" "kind-build-load" "Build local images and load them into Kind"
 	@printf "  %-24s %s\n" "app-install" "Deploy both Argo CD Applications (infrastructure + frontend/backend)"
+	@printf "  %-24s %s\n" "app-wait" "Wait for frontend and backend deployments to be ready"
 	@printf "  %-24s %s\n" "app-port-forward" "Expose app on http://localhost:8081"
 	@printf "  %-24s %s\n" "app-uninstall" "Remove application"
 	@printf "  %-24s %s\n" "mysql-list-backups" "List available MySQL backups"
@@ -142,16 +143,20 @@ app-install: | $(LOG_DIR)
 app-wait:
 	$(call step,6/7,Waiting for application resources)
 	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
-	@printf "   -> Waiting for service myapp-archer-game-frontend...\n"
-	@until kubectl get svc myapp-archer-game-frontend -n game-frontend > /dev/null 2>&1; do \
+	@printf "   -> Waiting for frontend deployment...\n"
+	@until kubectl get deployment myapp-archer-game-frontend -n game-frontend > /dev/null 2>&1; do \
 		sleep 2; \
 	done
-	@printf "   -> Waiting for deployment myapp-archer-game-frontend...\n"
-	@kubectl wait --for=condition=available deployment/myapp-archer-game-frontend -n game-frontend --timeout=300s
-	$(call ok,Application is ready)
+	@kubectl wait --for=condition=available deployment/myapp-archer-game-frontend -n game-frontend --timeout=300s > /dev/null 2>&1
+	@printf "   -> Waiting for backend deployment...\n"
+	@until kubectl get deployment myapp-archer-game-backend -n game-backend > /dev/null 2>&1; do \
+		sleep 2; \
+	done
+	@kubectl wait --for=condition=available deployment/myapp-archer-game-backend -n game-backend --timeout=300s > /dev/null 2>&1
+	$(call ok,Frontend and backend are ready)
 
 app-port-forward:
-	$(call step,6/6,Starting application port-forward)
+	$(call step,7/7,Starting application port-forward)
 	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
 	@kubectl port-forward svc/myapp-archer-game-frontend -n game-frontend 8081:80 > /dev/null 2>&1 &
 	$(call ok,Application available on http://localhost:8081)
