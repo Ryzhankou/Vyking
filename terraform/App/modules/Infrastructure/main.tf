@@ -50,7 +50,11 @@ resource "argocd_application" "infrastructure" {
     namespace = "argocd"
   }
 
-  wait = true
+  # Do not wait for infrastructure health — the CronJob's backup Jobs would
+  # block Terraform for minutes on every apply. MySQL readiness is verified
+  # indirectly: the App module's wait=true + backend init container ensure
+  # the stack is only considered healthy once MySQL is actually reachable.
+  wait = false
 
   spec {
     project = argocd_project.infrastructure.metadata[0].name
