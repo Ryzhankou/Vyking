@@ -133,13 +133,20 @@ make k8s-delete
 
 Argo CD syncs both applications from the Git repository.
 
-## Backup CronJob
+## Backup and Restore
 
+**Backup CronJob**:
 - **Schedule**: Every 5 minutes (for demo; adjust in `infrastructure/mysql-chart/values.yaml`)
-- **Image**: `bitnami/mysql:8.0` (includes mysqldump)
-- **Storage**: Dedicated PVC (`mysql-backup-pvc`)
+- **Image**: `mysql:8.0` (includes mysqldump)
+- **Storage**: Dedicated PVC (`infrastructure-backup-pvc`)
 - **Retention**: Backups older than 7 days are deleted
-- **Secret**: MySQL password from Kubernetes Secret `archer-db`
+
+**Restore** (via Makefile):
+```bash
+make mysql-list-backups           # List available backups
+make mysql-restore                # Restore from latest backup
+make mysql-restore BACKUP_FILE=gamedb_20250321_120000.sql.gz  # From specific file
+```
 
 ## Makefile Targets
 
@@ -154,6 +161,8 @@ Argo CD syncs both applications from the Git repository.
 | `k8s-app-install` | Deploy Argo CD Applications |
 | `k8s-app-uninstall` | Remove Argo CD Applications |
 | `kind-build-load` | Build and load images into Kind |
+| `mysql-list-backups` | List available MySQL backup files |
+| `mysql-restore` | Restore MySQL from backup (optionally with `BACKUP_FILE=...`) |
 | `helm-db-install` | Install MySQL via Helm (manual, non-GitOps) |
 | `helm-app-install` | Install app via Helm (manual, non-GitOps) |
 | `helm-app-install-kind` | Install app with local images (manual) |
@@ -180,11 +189,13 @@ Argo CD syncs both applications from the Git repository.
    ```
    Then open http://localhost:8081 (F12 → Console shows `[Archer] fetch leaderboard: /api/leaderboard`).
 
-4. **If MySQL empty** — delete MySQL StatefulSet + PVC, Argo CD will recreate:
+4. **If MySQL empty** — either restore from backup or reset:
    ```bash
+   make mysql-list-backups   # Check available backups
+   make mysql-restore       # Restore from latest
+   # Or reset: delete StatefulSet + PVC, let Argo CD recreate
    kubectl delete statefulset infrastructure-archer-db -n game-backend
    kubectl delete pvc data-infrastructure-archer-db-0 -n game-backend
-   # Wait for Argo CD to sync and recreate
    ```
 
 ### MySQL: "too many open files" / fsnotify watcher errors

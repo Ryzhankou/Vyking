@@ -1,0 +1,31 @@
+# One-off Job to list backup files - used by: make mysql-list-backups
+# Placeholders: __MYSQL_NS__, __BACKUP_PVC__, __JOB_NAME__
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __JOB_NAME__
+  namespace: __MYSQL_NS__
+  labels:
+    app.kubernetes.io/name: mysql-backup-list
+spec:
+  ttlSecondsAfterFinished: 60
+  backoffLimit: 0
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: lister
+          image: busybox:1.36
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "Backup files in /backups (newest first):"
+              ls -lt /backups/gamedb_*.sql.gz 2>/dev/null || echo "No backup files found."
+          volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+      volumes:
+        - name: backup-storage
+          persistentVolumeClaim:
+            claimName: __BACKUP_PVC__

@@ -1,0 +1,75 @@
+# MySQL restore Job - apply with: make mysql-restore [BACKUP_FILE=gamedb_YYYYMMDD_HHMMSS.sql.gz]
+# Placeholders are replaced by Makefile (__MYSQL_NS__, __MYSQL_RELEASE__, __BACKUP_PVC__, __JOB_NAME__)
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: __JOB_NAME__
+  namespace: __MYSQL_NS__
+  labels:
+    app.kubernetes.io/name: mysql-restore
+    app.kubernetes.io/component: restore
+spec:
+  ttlSecondsAfterFinished: 300
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: mysql-restore
+        app.kubernetes.io/component: restore
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: mysql-restore
+          image: mysql:8.0
+          command:
+            - /bin/bash
+            - -c
+            - |
+              set -euo pipefail
+              if [ -n "${BACKUP_FILE:-}" ]; then
+                FILE="/backups/${BACKUP_FILE}"
+              else
+                FILE=$(ls -t /backups/gamedb_*.sql.gz 2>/dev/null | head -1)
+              fi
+              if [ -z "${FILE}" ] || [ ! -f "${FILE}" ]; then
+                echo "[$(date)] ERROR: No backup file found (BACKUP_FILE=${BACKUP_FILE:-<latest>})"
+                exit 1
+              fi
+              echo "[$(date)] Restoring from ${FILE}"
+              gunzip -c "${FILE}" | mysql \
+                --host="${DB_HOST}" \
+                --port="${DB_PORT}" \
+                --user="${DB_USER}" \
+                --password="${DB_PASSWORD}" \
+                "${DB_NAME}"
+              echo "[$(date)] Restore completed: ${FILE}"
+          env:
+            - name: DB_HOST
+              value: __MYSQL_RELEASE__-archer-db
+            - name: DB_PORT
+              value: "3306"
+            - name: DB_NAME
+              value: "gamedb"
+            - name: DB_USER
+              value: "gameuser"
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: __MYSQL_RELEASE__-archer-db
+                  key: mysql-password
+            - name: BACKUP_FILE
+              value: __BACKUP_FILE__
+          volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+      volumes:
+        - name: backup-storage
+          persistentVolumeClaim:
+            claimName: __BACKUP_PVC__

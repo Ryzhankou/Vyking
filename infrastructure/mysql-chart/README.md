@@ -35,6 +35,18 @@ Service: `infrastructure-archer-db`, Secret: `infrastructure-archer-db` (keys: `
 | `backup.schedule` | Cron schedule | `*/5 * * * *` |
 | `backup.pvcSize` | Backup PVC size | `5Gi` |
 
+## Restore from Backup
+
+Standalone Jobs (applied via Makefile, not part of Helm release):
+
+```bash
+make mysql-list-backups           # List available backups (newest first)
+make mysql-restore                # Restore from latest backup
+make mysql-restore BACKUP_FILE=gamedb_20250321_120000.sql.gz  # Restore from specific file
+```
+
+Variables: `MYSQL_NS`, `MYSQL_RELEASE`, `MYSQL_BACKUP_PVC` (must match infrastructure helm release).
+
 ## Production
 
 - Use `archer-db.auth.existingSecret` for root and app passwords
