@@ -44,7 +44,8 @@ backend:
       memory: "256Mi"
 
   config:
-    DB_HOST: "infrastructure-archer-db"  # Must match MySQL service name (e.g. <release>-archer-db)
+    # FQDN required when backend and MySQL are in different namespaces (e.g. App of Apps)
+    DB_HOST: "infrastructure-archer-db.game-backend.svc.cluster.local"
     DB_PORT: "3306"
     DB_NAME: "gamedb"
     DB_USER: "gameuser"

@@ -45,10 +45,10 @@ helm install myapp applications/helm_chart -n game-frontend --create-namespace \
 | `frontend.nodeSelector` | Node selector for frontend pods | `tier: frontend` |
 | `backend.namespace` | Backend namespace | `game-backend` |
 | `backend.nodeSelector` | Node selector for backend pods | `tier: backend` |
-| `backend.config.DB_HOST` | MySQL service name | `infrastructure-archer-db` |
+| `backend.config.DB_HOST` | MySQL host (use FQDN for cross-namespace) | `infrastructure-archer-db.game-backend.svc.cluster.local` |
 | `backend.existingSecret.name` | Secret with DB_PASSWORD (key: mysql-password) | `infrastructure-archer-db` |
 
-**Important**: `backend.config.DB_HOST` and `backend.existingSecret.name` must match the MySQL service and secret from the infrastructure chart. With release `infrastructure`, they are `infrastructure-archer-db`.
+**Important**: `backend.config.DB_HOST` must resolve to MySQL. Use FQDN (`infrastructure-archer-db.game-backend.svc.cluster.local`) when backend and MySQL are in different namespaces (e.g. App of Apps). `backend.existingSecret.name` must match the infrastructure chart secret.
 
 ## Image Tags
 
