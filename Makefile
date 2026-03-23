@@ -92,6 +92,8 @@ k8s-create: | $(LOG_DIR)
 		}; \
 	fi
 	$(call ok,Cluster ready: kind-$(KIND_CLUSTER))
+	@printf "\n"
+	@kubectl get nodes -o custom-columns="NAME:.metadata.name,STATUS:.status.conditions[-1].type,ROLES:.metadata.labels.kubernetes\.io/role,VERSION:.status.nodeInfo.kubeletVersion,IP:.status.addresses[0].address"
 
 k8s-delete: | $(LOG_DIR)
 	$(call step,3/3,Deleting Kind cluster '$(KIND_CLUSTER)')
