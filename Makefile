@@ -29,7 +29,7 @@ help:
 	@printf "  %-24s %s\n" "k8s-create" "Create Kind cluster"
 	@printf "  %-24s %s\n" "k8s-delete" "Delete Kind cluster"
 	@printf "  %-24s %s\n" "argocd-install" "Install Argo CD via Terraform"
-	@printf "  %-24s %s\n" "argocd-port-forward" "Expose Argo CD on http://localhost:8080"
+	@printf "  %-24s %s\n" "argocd-port-forward" "Expose Argo CD on https://localhost:8080"
 	@printf "  %-24s %s\n" "argocd-uninstall" "Remove Argo CD via Terraform"
 	@printf "  %-24s %s\n" "kind-build-load" "Build local images and load them into Kind"
 	@printf "  %-24s %s\n" "app-install" "Deploy both Argo CD Applications (infrastructure + frontend/backend)"
@@ -116,7 +116,7 @@ argocd-port-forward:
 	@kubectl config use-context kind-$(KIND_CLUSTER) > /dev/null 2>&1
 	@kubectl wait --for=condition=available deployment/argocd-server -n argocd --timeout=120s > /dev/null 2>&1
 	@kubectl port-forward svc/argocd-server -n argocd 8080:443 > /dev/null 2>&1 &
-	$(call ok,Argo CD available on http://localhost:8080)
+	$(call ok,Argo CD available on https://localhost:8080)
 
 argocd-uninstall: | $(LOG_DIR)
 	$(call step,2/3,Removing Argo CD)
@@ -210,7 +210,7 @@ up:
 	@printf "\n"
 	$(call ok,Environment is ready)
 	@printf "  Cluster:      kind-%s\n" "$(KIND_CLUSTER)"
-	@printf "  Argo CD:      http://localhost:8080\n"
+	@printf "  Argo CD:      https://localhost:8080\n"
 	@printf "  Application:  http://localhost:8081\n"
 	@printf "  Git branch:   %s\n" "$(TARGET_REVISION)"
 	@printf "  Logs:         %s/\n" "$(LOG_DIR)"

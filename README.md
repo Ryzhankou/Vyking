@@ -135,7 +135,7 @@ You should see 1 control-plane and 3 worker nodes.
 make argocd-port-forward
 ```
 
-Open http://localhost:8080. Login: `admin` / `<ARGOCD_ADMIN_PASSWORD>`.
+Open https://localhost:8080. Login: `admin` / `<ARGOCD_ADMIN_PASSWORD>`.
 
 You should see three applications: **apps** (root), **infrastructure**, and **myapp**, all synced and healthy.
 
